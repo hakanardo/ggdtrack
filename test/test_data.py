@@ -1,6 +1,6 @@
 from random import randrange
 import numpy as np
-from ggdtrack.data.core import Detection
+from ggdtrack.dataset import Detection
 
 def slow_iou(self, other):
     b1 = self.box
