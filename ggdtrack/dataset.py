@@ -1,3 +1,4 @@
+import json
 from collections import namedtuple
 
 import cv2
@@ -110,3 +111,31 @@ class Detection(namedtuple('Detection', ['frame', 'left', 'top', 'right', 'botto
     def update_mask(self, mask):
         mask[self.top:self.bottom, self.left:self.right] = 255
 
+
+class Dataset:
+    name = 'Unknown'
+
+    def scene(self, scene):
+        raise NotImplementedError
+
+    def graph_names(self, part):
+        with open("graphs/%s_traineval.json" % self.name, "r") as fd:
+            parts = json.load(fd)
+        if part == 'trainval':
+            return parts['train'] + parts['eval']
+        else:
+            return parts[part]
+
+
+class Scene:
+    def frame(self, frame):
+        raise NotImplementedError
+
+    def ground_truth(self):
+        raise NotImplementedError
+
+    def detections(self, start_frame=1, stop_frame=np.inf):
+        raise NotImplementedError
+
+    def roi(self):
+        raise NotImplementedError
