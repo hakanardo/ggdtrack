@@ -3,10 +3,11 @@ import os
 import uuid
 from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
-
 import pickle
-
 import torch
+
+import sys
+sys.setrecursionlimit(100000)
 
 
 def parallel(worker, jobs, threads=cpu_count()):

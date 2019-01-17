@@ -5,14 +5,8 @@ from collections import defaultdict
 from vi3o import view
 import numpy as np
 import pickle
-
-import sys
 import os
-
 from ggdtrack.utils import parallel, save_json, save_pickle, load_json
-
-sys.setrecursionlimit(100000)
-
 
 class KltTrack:
     def __init__(self, idx, x, y):
