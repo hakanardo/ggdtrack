@@ -164,6 +164,10 @@ class Duke(Dataset):
             popd
         ''' % (self.path, self.path))
 
+    def prepare(self):
+        self.convert_ground_truth()
+        self.convert_dpm_detections()
+
 
 class DukeScene(Scene):
     def __init__(self, dataset, camera):
