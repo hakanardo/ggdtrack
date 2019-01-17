@@ -373,4 +373,4 @@ def pose2bb(pose):
     return bb
 
 if __name__ == '__main__':
-    Duke("/tmp/tst").download()
+    Duke("/mnt/storage/duke").download()
