@@ -1,13 +1,10 @@
-import json
 from bisect import bisect
 from collections import defaultdict
-from collections import namedtuple
 
 import cv2
 import numpy as np
 import os
 import h5py
-from shapely import geometry
 from scipy import io
 import pickle
 from ggdtrack.dataset import Dataset, Detection, Scene
@@ -15,9 +12,11 @@ from ggdtrack.dataset import Dataset, Detection, Scene
 
 class Duke(Dataset):
     name = "duke"
+    scene_names = range(1,9)
+    parts = {'train': scene_names, 'eval': scene_names, 'test': scene_names}
 
     def __init__(self, path, detections='dpm', scale=1.0):
-        self.path = path
+        self.path = os.path.join(path, 'DukeMTMC')
         self.video_reader = DukeVideoReader(path)
         self.scale = scale
         self.detections = {
@@ -123,8 +122,9 @@ class Duke(Dataset):
         return self._rois[camera]
 
     def download(self):
+        path = os.path.dirname(self.path)
         os.system('''
-            mkdir %s
+            mkdir -p %s
             pushd %s
             mkdir DukeMTMC
             pushd DukeMTMC
@@ -162,7 +162,7 @@ class Duke(Dataset):
                 popd
             done
             popd
-        ''' % (self.path, self.path))
+        ''' % (path, path))
 
     def prepare(self):
         self.convert_ground_truth()
@@ -171,22 +171,30 @@ class Duke(Dataset):
 
 class DukeScene(Scene):
     fps = 60
+    start_times = [-1, 5543, 3607, 27244, 31182, 1, 22402, 18968, 46766]
+    global_parts = {'train': range(47720, 209559),
+                    'eval': range(209559, 227540+1),
+                    'test': range(227541, 356648+1),
+                   }
 
-    def __init__(self, dataset, camera):
+    def __init__(self, dataset, name):
         self.dataset = dataset
-        self.camera = camera
+        self.name = name
+        f0 = self.start_times[name]
+        self.parts = {n: range(r.start - f0, r.stop - f0)
+                      for n, r in self.global_parts.items()}
 
     def frame(self, frame):
-        return self.dataset.frame(self.camera, frame)
+        return self.dataset.frame(self.name, frame)
 
     def detections(self, start_frame=1, stop_frame=np.inf):
-        return self.dataset.detections(self.camera, start_frame, stop_frame)
+        return self.dataset.detections(self.name, start_frame, stop_frame)
 
     def ground_truth(self):
-        return self.dataset.ground_truth(self.camera)
+        return self.dataset.ground_truth(self.name)
 
     def roi(self):
-        return self.dataset.roi(self.camera)
+        return self.dataset.roi(self.name)
 
 
 

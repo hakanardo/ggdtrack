@@ -114,6 +114,8 @@ class Detection(namedtuple('Detection', ['frame', 'left', 'top', 'right', 'botto
 
 class Dataset:
     name = 'Unknown'
+    parts = {'train': None, 'eval': None, 'test': None}
+    default_min_conf = 0
 
     def scene(self, scene):
         raise NotImplementedError
@@ -129,6 +131,8 @@ class Dataset:
 
 class Scene:
     fps = None
+    parts = {'train': (), 'eval': (), 'test': ()}
+    name = 'Unknown'
 
     def frame(self, frame):
         raise NotImplementedError
@@ -141,3 +145,8 @@ class Scene:
 
     def roi(self):
         raise NotImplementedError
+
+    @property
+    def default_min_conf(self):
+        return self.dataset.default_min_conf
+

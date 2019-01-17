@@ -5,6 +5,10 @@ import numpy as np
 import pickle
 
 import sys
+import os
+
+from ggdtrack.utils import parallel, save_json, save_pickle
+
 sys.setrecursionlimit(100000)
 
 
@@ -38,7 +42,9 @@ def connect(d1, d2, weight_data):
     d1.next_weight_data[d2].append(weight_data)
     d2.prev.add(d1)
 
-def video_detections(scene, f0, frames, min_conf=-0.5):
+def video_detections(scene, f0, frames, min_conf=None):
+    if min_conf is None:
+        min_conf = scene.default_min_conf
     for frame_idx in range(f0, f0 + frames):
         frame = scene.frame(frame_idx)
         detections = []
@@ -216,10 +222,43 @@ def show_detections(viddet):
             det.draw(frame, label=str(det.confidence))
         view(frame)
 
+def prep_training_graphs_worker(arg):
+    scene, f0, myseg, graph_name, part = arg
+    if not os.path.exists(graph_name):
+        graph = make_graph(video_detections(scene, f0, myseg), scene.fps)
+        save_pickle(graph, graph_name)
+    return part, (graph_name, scene.name)
+
+
+def prep_training_graphs(dataset, threads=6, segment_length_s=10, segment_overlap_s=1):
+    lsts = {n: [] for n in dataset.parts.keys()}
+    jobs = []
+    for part in lsts.keys():
+        for scene_name in dataset.parts[part]:
+            scene = dataset.scene(scene_name)
+            segment_length = segment_length_s * scene.fps
+            segment_overlap = segment_overlap_s * scene.fps
+            f0 = scene.parts[part].start
+            while f0 + segment_length <  scene.parts[part].stop:
+                if f0 + 2*segment_length >  scene.parts[part].stop:
+                    myseg = scene.parts[part].stop - f0 + 1
+                else:
+                    myseg = segment_length
+                graph_name = "graphs/%s_graph_%s_%.8d.pck" % (dataset.name, scene_name, f0)
+                jobs.append((scene, f0, myseg, graph_name, part))
+                f0 += myseg - segment_overlap
+
+    for part, entry in parallel(prep_training_graphs_worker, jobs, threads):
+        print(part, entry)
+        lsts[part].append(entry)
+        save_json(lsts, "graphs/%s_traineval.json" % dataset.name)
+
+
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
-    # show_detections(video_detections(Duke('/home/hakan/src/duke/DukeMTMC/').scene(1), 124472, 1000, 0.3))
-    # show_detections(video_detections(Duke('/home/hakan/src/duke/DukeMTMC/', 'openpose').scene(1), 124472, 1000, 0.3))
+    # show_detections(video_detections(Duke('/home/hakan/src/duke').scene(1), 124472, 1000, 0.3))
+    # show_detections(video_detections(Duke('/home/hakan/src/duke', 'openpose').scene(1), 124472, 1000, 0.3))
 
-    scene = Duke('/home/hakan/src/duke/DukeMTMC/').scene(1)
-    make_graph(video_detections(scene, 124472, 100, 0), scene.fps, True, True)
+    scene = Duke('/home/hakan/src/duke').scene(1)
+    # make_graph(video_detections(scene, 124472, 100, 0), scene.fps, True, True)
+    prep_training_graphs(Duke('/home/hakan/src/duke'))
