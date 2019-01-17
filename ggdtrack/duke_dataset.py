@@ -170,6 +170,8 @@ class Duke(Dataset):
 
 
 class DukeScene(Scene):
+    fps = 60
+
     def __init__(self, dataset, camera):
         self.dataset = dataset
         self.camera = camera

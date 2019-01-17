@@ -128,6 +128,8 @@ class Dataset:
 
 
 class Scene:
+    fps = None
+
     def frame(self, frame):
         raise NotImplementedError
 
