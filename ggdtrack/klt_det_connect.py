@@ -1,3 +1,5 @@
+from random import shuffle, Random
+
 import cv2
 from collections import defaultdict
 from vi3o import view
@@ -262,6 +264,7 @@ def prep_training_graphs(dataset, threads=6, segment_length_s=10, segment_overla
                 jobs.append((scene, f0, myseg, graph_name, part))
                 f0 += myseg - segment_overlap
 
+    Random(42).shuffle(jobs)
     for part, entry in parallel(prep_training_graphs_worker, jobs, threads):
         print(part, entry)
         lsts[part].append(entry)

@@ -6,7 +6,6 @@ from shutil import rmtree
 import torch
 
 from ggdtrack.dataset import ground_truth_tracks
-from ggdtrack.duke_dataset import Duke
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.mmap_array import as_database, VarHMatrixList, ScalarList
 from ggdtrack.model import NNModelGraphresPerConnection
@@ -32,6 +31,13 @@ GraphBatchPair = namedtuple('GraphBatchPair', ['pos', 'neg', 'name'])
 
 GraphDiffData = namedtuple('GraphDiffData', ['klt_idx', 'klt_data', 'long_idx', 'long_data', 'edge_signs',
                                              'detections', 'detection_signs', 'entry_diff'])
+
+
+class GraphDiffBatch(namedtuple('GraphDiffBatch', ['klt_idx', 'klt_data', 'long_idx', 'long_data', 'edge_signs',
+                                                  'detections', 'detection_signs', 'entry_diffs',
+                                                  'edge_idx', 'detection_idx'])):
+    def to(self, device):
+        return GraphDiffBatch(*[x.to(device) for x in self])
 
 class GraphDiffList:
     def __init__(self, db, model, mode=None, lazy=False):
@@ -290,7 +296,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=6, limit=None):
         diff_lists[part] = GraphDiffList(dn, model)
 
     for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads):
-        print(bfn)
+        print(part, bfn)
         trainval[part].append(bfn)
         save_json(trainval, "minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name))
         graphdiff = torch.load(bfn)
@@ -317,5 +323,31 @@ def split_track_on_missing_edge(gt_tracks):
             det.track_id = track_id
     return tracks
 
+def merge_idx(idxes):
+    idx = [0]
+    i0 = 0
+    for ii in idxes:
+        for i in ii[1:]:
+            idx.append(i + i0)
+        i0 = idx[-1]
+    return idx
+
+def make_ggd_batch(ggds):
+    return GraphDiffBatch(
+        klt_data=torch.tensor(np.vstack(d.klt_data for d in ggds), dtype=torch.float32),
+        klt_idx=torch.tensor(merge_idx(d.klt_idx for d in ggds), dtype=torch.long),
+        long_data=torch.tensor(np.vstack(d.long_data for d in ggds), dtype=torch.float32),
+        long_idx=torch.tensor(merge_idx(d.long_idx for d in ggds), dtype=torch.long),
+        edge_signs=torch.tensor(np.vstack(d.edge_signs for d in ggds), dtype=torch.float32),
+        edge_idx=torch.tensor(np.cumsum([0] + [len(d.edge_signs)  for d in ggds]), dtype=torch.long),
+
+        detections=torch.tensor(np.vstack(d.detections for d in ggds), dtype=torch.float32),
+        detection_signs=torch.tensor(np.vstack(d.detection_signs for d in ggds), dtype=torch.float32),
+        detection_idx=torch.tensor(np.cumsum([0] + [len(d.detection_signs)  for d in ggds]), dtype=torch.long),
+
+        entry_diffs=torch.tensor(np.array([d.entry_diff for d in ggds], dtype=np.float32), dtype=torch.float32))
+
+
 if __name__ == '__main__':
+    from ggdtrack.duke_dataset import Duke
     prep_minimal_graph_diffs(Duke('/home/hakan/src/duke'), NNModelGraphresPerConnection)
