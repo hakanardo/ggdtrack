@@ -1,0 +1,214 @@
+import os
+from collections import defaultdict, namedtuple
+from random import shuffle
+from shutil import rmtree
+
+import torch
+
+from ggdtrack.dataset import ground_truth_tracks
+from ggdtrack.duke_dataset import Duke
+from ggdtrack.klt_det_connect import graph_names
+from ggdtrack.model import NNModelGraphresPerConnection
+from ggdtrack.utils import parallel, save_json, save_torch, load_pickle
+
+
+class GraphBatch(namedtuple('GraphBatch', ['edge', 'detection', 'entries'])):
+    def __new__(cls, edge, detection, entries):
+        if not isinstance(detection, torch.Tensor):
+            detection = torch.tensor([d for d in detection], dtype=torch.float)
+        if not isinstance(entries, torch.Tensor):
+            entries = torch.tensor(entries, dtype=torch.float)
+        return super(GraphBatch, cls).__new__(cls, edge, detection, entries)
+
+    def size(self):
+        return len(self.edge) + len(self.detection)
+
+
+GraphBatchPair = namedtuple('GraphBatchPair', ['pos', 'neg', 'name'])
+
+def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
+    graph_diff = []
+    gt_tracks, graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+    gt_tracks = split_track_on_missing_edge(gt_tracks)
+
+    for det in graph:
+        if det.track_id is None:
+            # False positive
+            graph_diff.append(GraphBatchPair(GraphBatch(empty, empty, 0),
+                                             GraphBatch(empty, [model.detecton_weight_feature(det)], 1), 'FalsePositive'))
+            for nxt, weight_data in det.next_weight_data.items():
+                f = model.connection_weight_feature(det, nxt)
+                if nxt.track_id is not None:
+                    for d in nxt.prev:
+                        if d.track_id == nxt.track_id:
+                            # Split from False Positive
+                            graph_diff.append(GraphBatchPair(GraphBatch([model.connection_weight_feature(d, nxt)], empty, 0),
+                                                             GraphBatch([f], [model.detecton_weight_feature(det)], 0), 'SplitFromFalsePositive'))
+                            break
+                    else:
+                        # Extra first
+                        graph_diff.append(GraphBatchPair(GraphBatch(empty, empty, 0),
+                                                         GraphBatch([f], [model.detecton_weight_feature(det)], 0), 'ExtraFirst'))
+                else:
+                    # Dual false positive
+                    graph_diff.append(GraphBatchPair(GraphBatch(empty, empty, 0),
+                                                     GraphBatch([f], [model.detecton_weight_feature(det), model.detecton_weight_feature(nxt)], 1), 'DualFalsePositive'))
+        else:
+            same_track = []
+            other_track = []
+            for nxt, weight_data in det.next_weight_data.items():
+                if not weight_data:
+                    continue
+                if det.track_id == nxt.track_id:
+                    same_track.append(nxt)
+                else:
+                    other_track.append(nxt)
+            same_track.sort(key=lambda d: d.frame)
+
+            if same_track:
+                f1 = model.connection_weight_feature(det, same_track[0])
+                if len(same_track) > 1:
+                    if same_track[0].next_weight_data[same_track[1]]:
+                        # Detection skipp
+                        f2 = model.connection_weight_feature(same_track[0], same_track[1])
+                        f_skip = model.connection_weight_feature(det, same_track[1])
+                        graph_diff.append(GraphBatchPair(GraphBatch([f1, f2], [model.detecton_weight_feature(same_track[0])], 0),
+                                                         GraphBatch([f_skip], empty, 0), 'DetectionSkipp'))
+                else:
+                    # Skipp last
+                    graph_diff.append(GraphBatchPair(GraphBatch([f1], [model.detecton_weight_feature(same_track[0])], 0),
+                                                     GraphBatch(empty, empty, 0), 'SkippLast'))
+                # Split
+                graph_diff.append(GraphBatchPair(GraphBatch([f1], empty, 0),
+                                                 GraphBatch(empty, empty, 1), 'Split'))
+
+                if det.track_id not in {d.track_id for d in det.prev}:
+                    # Skipp first
+                    graph_diff.append(GraphBatchPair(GraphBatch([f1], [model.detecton_weight_feature(det)], 0),
+                                                     GraphBatch(empty, empty, 0), 'SkippFirst'))
+
+            for other_nxt in other_track:
+                if other_nxt.track_id is None:
+                    f_bad = model.connection_weight_feature(det, other_nxt)
+                    if same_track:
+                        # Split to false positive
+                        f_ok = model.connection_weight_feature(det, same_track[0])
+                        graph_diff.append(GraphBatchPair(GraphBatch([f_ok], empty, 0),
+                                                         GraphBatch([f_bad], [model.detecton_weight_feature(other_nxt)], 1), 'SplitToFalsePositive'))
+                    else:
+                        # Extra last
+                        graph_diff.append(GraphBatchPair(GraphBatch(empty, empty, 0),
+                                                         GraphBatch([f_bad], [model.detecton_weight_feature(other_nxt)], 0), 'ExtraLast'))
+
+                else:
+                    prev = [d for d in other_nxt.prev if d.track_id == other_nxt.track_id]
+                    if prev and same_track:
+                        nxt = same_track[0]
+                        other = max(prev, key=lambda d: d.frame)
+                        ok1 = model.connection_weight_feature(det, nxt)
+                        ok2 = model.connection_weight_feature(other, other_nxt)
+                        bad1 = model.connection_weight_feature(det, other_nxt)
+                        if other.next_weight_data[nxt]:
+                            # ID switch
+                            bad2 = model.connection_weight_feature(other, nxt)
+                            graph_diff.append(GraphBatchPair(GraphBatch([ok1, ok2], empty, 0),
+                                                             GraphBatch([bad1, bad2], empty, 0), 'IdSwitch'))
+                        else:
+                            # Double split and merge
+                            graph_diff.append(GraphBatchPair(GraphBatch([ok1, ok2], empty, 0),
+                                                             GraphBatch([bad1], empty, 1), 'DoubleSplitAndMerge'))
+
+                    elif not same_track:
+                        # Merge
+                        f = model.connection_weight_feature(det, other_nxt)
+                        graph_diff.append(GraphBatchPair(GraphBatch(empty, empty, 1),
+                                                         GraphBatch([f], empty, 0), 'Merge'))
+                    else:
+                        # Split and merge
+                        ok = model.connection_weight_feature(det, same_track[0])
+                        bad = model.connection_weight_feature(det, other_nxt)
+                        graph_diff.append(GraphBatchPair(GraphBatch([ok], empty, 1),
+                                                         GraphBatch([bad], empty, 0), 'SplitAndMerge'))
+    # Not too short tracks
+    detections = []
+    edges = []
+    for tr in gt_tracks:
+        prv = None
+        for det in tr:
+            detections.append(model.detecton_weight_feature(det))
+            if prv is not None:
+                edges.append(model.connection_weight_feature(prv, det))
+            if len(detections) == find_minimal_graph_diff.too_short_track:
+                graph_diff.append(GraphBatchPair(GraphBatch(empty, empty, 0),
+                                                 GraphBatch(edges, detections, 1), 'TooShortTrack'))
+            elif len(detections) == find_minimal_graph_diff.long_track:
+                graph_diff.append(GraphBatchPair(GraphBatch(edges, detections, 1),
+                                                 GraphBatch(empty, empty, 0), 'LongTrack'))
+
+                detections = []
+                edges = []
+            prv = det
+    return graph_diff
+
+find_minimal_graph_diff.too_short_track = 2
+find_minimal_graph_diff.long_track = 4
+
+
+def prep_minimal_graph_diff_worker(arg):
+    dataset, cam, part, model, fn, bfn = arg
+    if os.path.exists(bfn):
+        return part, bfn
+    save_torch(find_minimal_graph_diff(dataset.scene(cam), load_pickle(fn),  model), bfn)
+    return part, bfn
+
+def prep_minimal_graph_diffs(dataset, model, threads=6, limit=None):
+    trainval = {'train': [], 'eval': []}
+    diff_lists = {}
+    jobs = []
+    for part in trainval.keys():
+        if limit is None:
+            entries = graph_names(dataset, part)
+        elif isinstance(limit, list):
+            entries = limit[part]
+        else:
+            entries = graph_names(dataset, part)
+            shuffle(entries)
+            entries = entries[:limit]
+        for fn, cam in entries:
+            bfn = os.path.join("minimal_graph_diff", model.feature_name + '-' + os.path.basename(fn))
+            jobs.append((dataset, cam, part, model, fn, bfn))
+        dn = "minimal_graphres/%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part)
+        if os.path.exists(dn):
+            rmtree(dn)
+        diff_lists[part] = GraphDiffList(dn)
+
+    for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads):
+        print(bfn)
+        trainval[part].append(bfn)
+        save_json(trainval, "minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name))
+        graphdiff = torch.load(bfn)
+        lst = diff_lists[part]
+        for gd in graphdiff:
+            lst.append(gd)
+
+def split_track_on_missing_edge(gt_tracks):
+    tracks = defaultdict(list)
+    track_id = 0
+    for tr in gt_tracks:
+        prv = None
+        for det in tr:
+            if prv is not None:
+                if not prv.next_weight_data[det]:
+                    track_id += 1
+            tracks[track_id].append(det)
+            prv = det
+        track_id += 1
+    tracks = list(tracks.values())
+
+    for track_id, tr in enumerate(tracks):
+        for det in tr:
+            det.track_id = track_id
+    return tracks
+
+if __name__ == '__main__':
+    prep_minimal_graph_diffs(Duke('/home/hakan/src/duke'), NNModelGraphresPerConnection, 1)

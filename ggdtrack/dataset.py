@@ -1,7 +1,9 @@
 import json
+from collections import defaultdict
 from collections import namedtuple
 
 import cv2
+from lap._lapjv import lapjv
 from shapely import geometry
 import numpy as np
 
@@ -150,3 +152,34 @@ class Scene:
     def default_min_conf(self):
         return self.dataset.default_min_conf
 
+
+def ground_truth_tracks(gt_frames, graph, iou_threshold=0.3):
+    graph_frames = defaultdict(list)
+    for det in graph:
+        graph_frames[det.frame].append(det)
+    frames = graph_frames.keys()
+    if frames:
+        frames = range(min(frames), max(frames) + 1)
+    for f in frames:
+        detections = graph_frames[f]
+        gt = gt_frames[f]
+        for det in detections:
+            det.track_id = None
+        if len(gt) > 0:
+            costs = [[-det.iou(d) for d in gt] for det in detections]
+            if costs:
+                cost, _, gt_matches = lapjv(np.array(costs), extend_cost=True)
+                assert len(gt_matches) == len(gt)
+                for i in range(len(gt)):
+                    j = gt_matches[i]
+                    if -costs[j][i] > iou_threshold:
+                        detections[j].track_id = gt[i].id
+    gt_tracks = defaultdict(list)
+    for det in graph:
+        if det.track_id is not None:
+            gt_tracks[det.track_id].append(det)
+    gt_tracks = list(gt_tracks.values())
+    for tr in gt_tracks:
+        tr.sort(key=lambda d: d.frame)
+
+    return gt_tracks, graph_frames

@@ -15,7 +15,7 @@ class Duke(Dataset):
     scene_names = range(1,9)
     parts = {'train': scene_names, 'eval': scene_names, 'test': scene_names}
 
-    def __init__(self, path, detections='dpm', scale=1.0):
+    def __init__(self, path, detections='dpm', scale=1.0, default_min_conf=0):
         self.path = os.path.join(path, 'DukeMTMC')
         self.video_reader = DukeVideoReader(self.path + '/')
         self.scale = scale
@@ -23,6 +23,7 @@ class Duke(Dataset):
             'dpm': self.dpm_detections,
             'openpose': self.openpose_detections,
         }[detections]
+        self.default_min_conf = default_min_conf
 
     def scene(self, scene):
         return DukeScene(self, scene)

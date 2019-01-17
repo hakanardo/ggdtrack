@@ -7,7 +7,7 @@ import pickle
 import sys
 import os
 
-from ggdtrack.utils import parallel, save_json, save_pickle
+from ggdtrack.utils import parallel, save_json, save_pickle, load_json
 
 sys.setrecursionlimit(100000)
 
@@ -54,6 +54,19 @@ def video_detections(scene, f0, frames, min_conf=None):
         yield frame_idx, frame, detections
 
 
+def estimate_intradet_iou(detections):
+    for det in detections:
+        det.max_intra_iou = 0
+        det.max_intra_ioa = 0
+    for i in range(len(detections)):
+        for j in range(i+1, len(detections)):
+            iou = detections[i].iou(detections[j])
+            ioa = detections[i].ioa(detections[j])
+            for det in (detections[i], detections[j]):
+                det.max_intra_iou = max(det.max_intra_iou, iou)
+                det.max_intra_ioa = max(det.max_intra_ioa, ioa)
+
+
 def make_graph(video_detections, fps, save=False, show=False):
 
     tracks = []
@@ -78,6 +91,7 @@ def make_graph(video_detections, fps, save=False, show=False):
     for frame_idx, frame, detections in video_detections:
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
+        estimate_intradet_iou(detections)
         for det in detections:
             det.next_weight_data = defaultdict(list)
             det.pre_vs = []
@@ -253,12 +267,20 @@ def prep_training_graphs(dataset, threads=6, segment_length_s=10, segment_overla
         lsts[part].append(entry)
         save_json(lsts, "graphs/%s_traineval.json" % dataset.name)
 
+def graph_names(dataset, part):
+    parts = load_json("graphs/%s_traineval.json" % dataset.name)
+    if part == 'trainval':
+        return parts['train'] + parts['eval']
+    else:
+        return parts[part]
+
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     # show_detections(video_detections(Duke('/home/hakan/src/duke').scene(1), 124472, 1000, 0.3))
     # show_detections(video_detections(Duke('/home/hakan/src/duke', 'openpose').scene(1), 124472, 1000, 0.3))
 
-    scene = Duke('/home/hakan/src/duke').scene(1)
+    # scene = Duke('/home/hakan/src/duke').scene(1)
     # make_graph(video_detections(scene, 124472, 100, 0), scene.fps, True, True)
+
     prep_training_graphs(Duke('/home/hakan/src/duke'))
