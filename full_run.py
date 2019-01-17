@@ -1,5 +1,5 @@
 from ggdtrack.duke_dataset import Duke
 
-dataset = Duke("/tmp/tst")
+dataset = Duke("/mnt/storage/duke")
 # dataset.download()
 dataset.prepare()
