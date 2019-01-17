@@ -8,8 +8,11 @@ import torch
 from ggdtrack.dataset import ground_truth_tracks
 from ggdtrack.duke_dataset import Duke
 from ggdtrack.klt_det_connect import graph_names
+from ggdtrack.mmap_array import as_database, VarHMatrixList, ScalarList
 from ggdtrack.model import NNModelGraphresPerConnection
 from ggdtrack.utils import parallel, save_json, save_torch, load_pickle
+
+import numpy as np
 
 
 class GraphBatch(namedtuple('GraphBatch', ['edge', 'detection', 'entries'])):
@@ -25,6 +28,109 @@ class GraphBatch(namedtuple('GraphBatch', ['edge', 'detection', 'entries'])):
 
 
 GraphBatchPair = namedtuple('GraphBatchPair', ['pos', 'neg', 'name'])
+
+
+GraphDiffData = namedtuple('GraphDiffData', ['klt_idx', 'klt_data', 'long_idx', 'long_data', 'edge_signs',
+                                             'detections', 'detection_signs', 'entry_diff'])
+
+class GraphDiffList:
+    def __init__(self, db, model, mode=None, lazy=False):
+        self.db = db
+        self.mode = mode
+        self.model = model
+        if lazy:
+            self.klts = None
+        else:
+            self.init()
+
+    def init(self):
+        db = self.db = as_database(self.db, self.mode)
+        self.klts = VarHMatrixList(db, 'klt_data', 'klt_index', self.model.klt_feature_length)
+        self.longs = VarHMatrixList(db, 'long_data', 'long_index', self.model.long_feature_length)
+        self.edge_signs = VarHMatrixList(db, 'edge_signs_data', 'edge_signs_index', 1)
+        self.edge_index = ScalarList(db, 'edge_index', int)
+        if len(self.edge_index) == 0:
+            self.edge_index.append(0)
+        self.detections = VarHMatrixList(db, 'detection_data', 'detection_index', self.model.detecton_feature_length)
+        self.detection_signs = VarHMatrixList(db, 'detection_signs_data', 'detection_signs_index', 1)
+        self.entry_diff = ScalarList(db, 'entry_diff', np.float32)
+
+
+    def append(self, graph_diff):
+        if self.klts is None:
+            self.init()
+        edges = list(graph_diff.pos.edge) + list(graph_diff.neg.edge)
+        self.klts.extend([e[0] for e in edges])
+        self.longs.extend([e[1] for e in edges])
+        assert len(self.klts) == len(self.longs)
+        self.edge_index.append(len(self.klts))
+        signs = [1] * len(graph_diff.pos.edge) + [-1] * len(graph_diff.neg.edge)
+        self.edge_signs.append(np.array(signs).reshape((-1,1)))
+        dets = [np.asarray(a) for a in (graph_diff.pos.detection, graph_diff.neg.detection)]
+        dets = [a for a in dets if a.size]
+        if dets:
+            dets = np.vstack(dets)
+        else:
+            dets = np.empty((0, self.model.detecton_feature_length))
+        self.detections.append(dets)
+        signs = [1] * len(graph_diff.pos.detection) + [-1] * len(graph_diff.neg.detection)
+        self.detection_signs.append(np.array(signs).reshape((-1,1)))
+        self.entry_diff.append(graph_diff.pos.entries - graph_diff.neg.entries)
+
+    def __len__(self):
+        if self.klts is None:
+            self.init()
+        return len(self.detections)
+
+    def get_batch_pair(self, item):
+        if self.klts is None:
+            self.init()
+        i1 = self.edge_index[item]
+        i2 = self.edge_index[item + 1]
+        klts = [self.klts[i] for i in range(i1, i2)]
+        longs = [self.longs[i] for i in range(i1, i2)]
+        signs = self.edge_signs[item]
+        pos_klt = [klt for klt, sign in zip(klts, signs) if sign == 1]
+        neg_klt = [klt for klt, sign in zip(klts, signs) if sign == -1]
+        pos_long = [long for long, sign in zip(longs, signs) if sign == 1]
+
+        neg_long = [long for long, sign in zip(longs, signs) if sign == -1]
+        assert len(pos_klt) + len(neg_klt) == len(klts)
+        assert len(pos_long) + len(neg_long) == len(longs)
+
+        detections = self.detections[item]
+        signs = self.detection_signs[item]
+        pos_detection = [detection for detection, sign in zip(detections, signs) if sign == 1]
+        neg_detection = [detection for detection, sign in zip(detections, signs) if sign == -1]
+
+        entry_diff = self.entry_diff[item]
+        pos_entry = neg_entry = 0
+        if entry_diff > 0:
+            pos_entry = entry_diff
+        else:
+            neg_entry = -entry_diff
+
+        return GraphBatchPair(GraphBatch(list(zip(pos_klt, pos_long)), pos_detection, pos_entry),
+                              GraphBatch(list(zip(neg_klt, neg_long)), neg_detection, neg_entry),
+                              'Unknown')
+
+
+    def __getitem__(self, item):
+        if self.klts is None:
+            self.init()
+        i1 = self.edge_index[item]
+        i2 = self.edge_index[item + 1]
+
+        klt_idx, klt_data = self.klts[i1:i2]
+        long_idx, long_data = self.longs[i1:i2]
+        return GraphDiffData(
+            klt_idx=klt_idx, klt_data=klt_data, long_idx=long_idx, long_data=long_data,
+            edge_signs=self.edge_signs[item],
+            detections=self.detections[item],
+            detection_signs=self.detection_signs[item],
+            entry_diff=float(self.entry_diff[item])
+        )
+
 
 def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
     graph_diff = []
@@ -177,10 +283,10 @@ def prep_minimal_graph_diffs(dataset, model, threads=6, limit=None):
         for fn, cam in entries:
             bfn = os.path.join("minimal_graph_diff", model.feature_name + '-' + os.path.basename(fn))
             jobs.append((dataset, cam, part, model, fn, bfn))
-        dn = "minimal_graphres/%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part)
+        dn = "minimal_graph_diff/%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part)
         if os.path.exists(dn):
             rmtree(dn)
-        diff_lists[part] = GraphDiffList(dn)
+        diff_lists[part] = GraphDiffList(dn, model)
 
     for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads):
         print(bfn)
