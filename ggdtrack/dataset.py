@@ -9,6 +9,7 @@ import numpy as np
 
 
 class Detection(namedtuple('Detection', ['frame', 'left', 'top', 'right', 'bottom', 'confidence', 'id'])):
+    # Boudning box detections. left, top are inclusice and right, bottom are not like the range params
     def draw(self, img, color=None, thickness=3, label=None):
         if color is None:
             color = (127,127,127) if self.confidence is None else (0,0,255)
