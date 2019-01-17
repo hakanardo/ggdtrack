@@ -1,10 +1,11 @@
 import os
-from collections import defaultdict
 from glob import glob
 from shutil import rmtree
 import time
+import numpy as np
 
 import torch
+from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
 
@@ -52,9 +53,10 @@ class NormStats:
 
 
 def train_graphres_minimal(dataset, logdir, model, device=torch.device('cpu'), limit=None, epochs=10,
-                           resume=False, run_eval=True, mean_from=None):
+                           resume=False, mean_from=None,
+                           batch_size=256, learning_rate=1e-3, max_time=np.inf):
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters())
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     if resume:
         fn = sorted(glob("%s/???_snapshot.pyt" % (logdir)))[-1]
@@ -70,10 +72,16 @@ def train_graphres_minimal(dataset, logdir, model, device=torch.device('cpu'), l
 
 
     train_data = GraphDiffList("minimal_graph_diff/%s_%s_train" % (dataset.name, model.feature_name), model, "r")
-    train_loader = DataLoader(train_data, 256, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
-    if run_eval:
-        eval_data = GraphDiffList("minimal_graph_diff/%s_%s_eval" % (dataset.name, model.feature_name), model, "r")
-        eval_loader = DataLoader(eval_data, 256, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
+    eval_data = GraphDiffList("minimal_graph_diff/%s_%s_eval" % (dataset.name, model.feature_name), model, "r")
+    if limit:
+        n = int(limit * len(train_data))
+        train_data, _ = torch.utils.data.random_split(train_data, [n, len(train_data) - n])
+        n = int(limit * len(eval_data))
+        eval_data, _ = torch.utils.data.random_split(eval_data, [n, len(eval_data) - n])
+    train_loader = DataLoader(train_data, batch_size, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
+    eval_loader = DataLoader(eval_data, batch_size, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
+
+    writer = SummaryWriter(logdir, comment="_bs=%d_lr=1e%4.1f" % (batch_size, np.log10(learning_rate)))
 
     if mean_from is not None:
         mean_model = model.__class__()
@@ -101,6 +109,7 @@ def train_graphres_minimal(dataset, logdir, model, device=torch.device('cpu'), l
         model.edge_model.long_model.mean = torch.tensor(edge_long_stats.mean, dtype=torch.float32)
         model.edge_model.long_model.std = torch.sqrt(torch.tensor(edge_long_stats.var, dtype=torch.float32))
 
+    start_time = time.time()
     for epoch in range(start_epoch, start_epoch + epochs):
         model.train()
         total_loss = batches = examples = correct = 0
@@ -116,22 +125,31 @@ def train_graphres_minimal(dataset, logdir, model, device=torch.device('cpu'), l
             batches += 1
             loss.backward()
             optimizer.step()
+            if time.time() - start_time > max_time:
+                return
         train_acc = correct / examples
+        train_loss = total_loss / examples
 
-        if run_eval:
-            model.eval()
-            correct = examples = 0
-            for batch in eval_loader:
-                batch = batch.to(device)
-                diffs = model.ggd_batch_forward(batch)
-                examples += len(diffs)
-                correct += (diffs>0).sum().item()
-            eval_acc = correct / examples
-        else:
-            eval_acc = -1
+        model.eval()
+        correct = examples = total_loss = 0
+        for batch in eval_loader:
+            batch = batch.to(device)
+            diffs = model.ggd_batch_forward(batch)
+            examples += len(diffs)
+            correct += (diffs>0).sum().item()
+            labels = torch.ones_like(diffs)
+            loss = criterion(diffs, labels)
+            total_loss += loss.item()
+        eval_acc = correct / examples
+        eval_loss = total_loss / examples
 
         loss = total_loss / batches
-        print('%3d Loss: %9.6f, Train Accuracy: %9.6f %%, Eval Accuracy: %9.6f %%' % (epoch, loss, 100 * train_acc, 100 * eval_acc))
+        print('%3d Loss: %9.6f, Train Accuracy: %9.6f %%, Eval Accuracy: %9.6f %%' % (epoch, train_loss, 100 * train_acc, 100 * eval_acc))
+        writer.add_scalar('Loss/Train', train_loss, epoch)
+        writer.add_scalar('Loss/Eval', eval_loss, epoch)
+        writer.add_scalar('Accuracy/Train', 100 * train_acc, epoch)
+        writer.add_scalar('Accuracy/Eval', 100 * eval_acc, epoch)
+
         snapp = {
             'epoch': epoch,
             'model_state': model.state_dict(),
