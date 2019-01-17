@@ -17,7 +17,7 @@ class Duke(Dataset):
 
     def __init__(self, path, detections='dpm', scale=1.0):
         self.path = os.path.join(path, 'DukeMTMC')
-        self.video_reader = DukeVideoReader(path)
+        self.video_reader = DukeVideoReader(self.path + '/')
         self.scale = scale
         self.detections = {
             'dpm': self.dpm_detections,

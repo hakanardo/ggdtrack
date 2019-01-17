@@ -22,6 +22,8 @@ def save_json(obj, filename):
     tmp_filename = filename + '.' + str(uuid.uuid4()) + '.tmp'
     with open(tmp_filename, "w") as fd:
         json.dump(obj, fd)
+    if os.path.exists(filename):
+        os.unlink(filename)
     os.link(tmp_filename, filename)
     os.unlink(tmp_filename)
 
@@ -31,5 +33,7 @@ def save_pickle(obj, filename):
     tmp_filename = filename + str(uuid.uuid4()) + '.tmp'
     with open(tmp_filename, "wb") as fd:
         pickle.dump(obj, fd, -1)
+    if os.path.exists(filename):
+        os.unlink(filename)
     os.link(tmp_filename, filename)
     os.unlink(tmp_filename)
