@@ -271,6 +271,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=6, limit=None):
     trainval = {'train': [], 'eval': []}
     diff_lists = {}
     jobs = []
+    os.makedirs("minimal_graph_diff", exist_ok=True)
     for part in trainval.keys():
         if limit is None:
             entries = graph_names(dataset, part)
@@ -317,4 +318,4 @@ def split_track_on_missing_edge(gt_tracks):
     return tracks
 
 if __name__ == '__main__':
-    prep_minimal_graph_diffs(Duke('/home/hakan/src/duke'), NNModelGraphresPerConnection, 1)
+    prep_minimal_graph_diffs(Duke('/home/hakan/src/duke'), NNModelGraphresPerConnection)
