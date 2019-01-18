@@ -302,8 +302,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=6, limit=None):
             rmtree(dn)
         diff_lists[part] = GraphDiffList(dn, model)
 
-    for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads):
-        print(part, bfn)
+    for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
         trainval[part].append(bfn)
         save_json(trainval, "minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name))
         graphdiff = torch.load(bfn)

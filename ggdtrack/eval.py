@@ -10,11 +10,12 @@ import torch
 import numpy as np
 from shapely.geometry import Point
 from shapely.geometry import Polygon
+from tqdm import tqdm
 
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.lptrack import lp_track, interpolate_missing_detections
 from ggdtrack.mmap_array import VarHMatrixList
-from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle
+from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle, parallel_run
 
 
 class ConnectionBatch(namedtuple('ConnectionBatch', ['klt_idx', 'klt_data', 'long_idx', 'long_data'])):
@@ -60,8 +61,7 @@ def prep_eval_graph_worker(args):
 
 def prep_eval_graphs(dataset, model, threads=6):
     jobs = [(model, name) for name, cam in graph_names(dataset, "eval")]
-    for i, n in enumerate(parallel(prep_eval_graph_worker, jobs, threads)):
-        print('%d/%d: %s'% (i + 1, len(jobs), n))
+    parallel_run(prep_eval_graph_worker, jobs, threads, "Prepping eval graphs")
 
 def prep_eval_tracks_worker(args):
     model, name, device = args
@@ -91,8 +91,7 @@ def prep_eval_tracks(dataset, logdir, model, device=default_torch_device, part='
     jobs = [(model, name, device) for name, cam in limit]
     shuffle(jobs)
 
-    for i, n in enumerate(parallel(prep_eval_tracks_worker, jobs, threads)):
-        print('%d/%d: %s'% (i+1, len(jobs), n))
+    parallel_run(prep_eval_tracks_worker, jobs, threads, "Prepping eval tracks")
 
 class MotMetrics:
     def __init__(self, overall=False, iou_threshold=0.5):
@@ -145,8 +144,7 @@ def filter_out_non_roi_dets(scene, tracks):
 def eval_prepped_tracks(dataset):
     metrics = MotMetrics(True)
     metrics_int = MotMetrics(True)
-    for name, cam in graph_names(dataset, 'eval'):
-        print(name)
+    for name, cam in tqdm(graph_names(dataset, 'eval'), 'Evaluating tracks'):
         scene = dataset.scene(cam)
         gt_frames = scene.ground_truth()
         tracks_name = os.path.join("tracks", os.path.basename(name))

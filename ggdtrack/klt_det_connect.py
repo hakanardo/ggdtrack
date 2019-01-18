@@ -240,7 +240,7 @@ def prep_training_graphs_worker(arg):
     return part, (graph_name, scene.name)
 
 
-def prep_training_graphs(dataset, threads=6, segment_length_s=10, segment_overlap_s=1):
+def prep_training_graphs(dataset, threads=6, segment_length_s=10, segment_overlap_s=1, limit=None):
     lsts = {n: [] for n in dataset.parts.keys()}
     jobs = []
     for part in lsts.keys():
@@ -258,9 +258,12 @@ def prep_training_graphs(dataset, threads=6, segment_length_s=10, segment_overla
                 jobs.append((scene, f0, myseg, graph_name, part))
                 f0 += myseg - segment_overlap
 
+    jobs.sort(key=lambda j: j[3])
     Random(42).shuffle(jobs)
-    for part, entry in parallel(prep_training_graphs_worker, jobs, threads):
-        print(part, entry)
+    if limit is not None:
+        jobs = jobs[:limit]
+
+    for part, entry in parallel(prep_training_graphs_worker, jobs, threads, 'Preppping training graphs'):
         lsts[part].append(entry)
         save_json(lsts, "graphs/%s_traineval.json" % dataset.name)
 

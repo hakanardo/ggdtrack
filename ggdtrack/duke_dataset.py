@@ -9,8 +9,10 @@ import torch
 from scipy import io
 import pickle
 
+from tqdm import tqdm
+
 from ggdtrack.dataset import Dataset, Detection, Scene
-from ggdtrack.utils import download_file
+from ggdtrack.utils import download_file, save_pickle
 
 
 class Duke(Dataset):
@@ -93,23 +95,12 @@ class Duke(Dataset):
 
     def convert_ground_truth(self):
         for cam in range(1, 9):
-            print(cam)
-            gt = defaultdict(list)
-            for det in self.ground_truth_detections(cam):
-                gt[det.frame].append(det)
-            with open(self.path + '/ground_truth/camera%d.pck' % cam, "wb") as fd:
-                pickle.dump(gt, fd, -1)
-
-    def convert_dpm_detections(self):
-        for cam in range(1, 9):
-            print(cam)
-            detections = defaultdict(list)
-            for i, det in enumerate(self.dpm_detections(cam)):
-                if i % 10000 == 0:
-                    print('  ', i)
-                detections[det.frame].append(det)
-            with open(self.path + '/detections/DPM/frame_detections_camera%d.pck' % cam, "wb") as fd:
-                pickle.dump(detections, fd, -1)
+            filename = self.path + '/ground_truth/camera%d.pck' % cam
+            if not os.path.exists(filename):
+                gt = defaultdict(list)
+                for det in tqdm(self.ground_truth_detections(cam), 'Converting ground truth for camera %d' % cam):
+                    gt[det.frame].append(det)
+                save_pickle(gt, filename)
 
     _rois = {
         1: [[214, 553], [1904, 411], [1897, 1055], [216, 1051]],
@@ -140,7 +131,6 @@ class Duke(Dataset):
 
     def prepare(self):
         self.convert_ground_truth()
-        self.convert_dpm_detections()
 
 
 class DukeScene(Scene):

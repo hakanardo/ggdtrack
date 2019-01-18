@@ -11,17 +11,25 @@ import torch
 from torch.utils.model_zoo import _download_url_to_file
 
 import sys
+
+from tqdm import tqdm
+
 sys.setrecursionlimit(100000)
 
 
-def parallel(worker, jobs, threads=cpu_count()):
+def parallel(worker, jobs, threads=cpu_count(), tqdm_label=None):
     if threads > 1:
         p = Pool(threads)
         mymap = p.imap_unordered
     else:
         mymap = map
-    for res in mymap(worker, jobs):
+    for res in tqdm(mymap(worker, jobs), tqdm_label, len(jobs), disable=tqdm_label is None):
         yield res
+
+def parallel_run(worker, jobs, threads=cpu_count(), tqdm_label=None):
+    for _ in parallel(worker, jobs, threads, tqdm_label):
+        pass
+
 
 
 def save_json(obj, filename):

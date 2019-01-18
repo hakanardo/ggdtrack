@@ -7,10 +7,9 @@ from ggdtrack.train import train_graphres_minimal
 
 dataset = Duke("/home/hakan/src/duke")
 dataset.download()
-exit()
-
 dataset.prepare()
-prep_training_graphs(dataset)
+
+prep_training_graphs(dataset, limit=10)
 
 model = NNModelGraphresPerConnection()
 prep_minimal_graph_diffs(dataset, model)
