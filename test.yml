@@ -1,0 +1,4 @@
+sut:
+    build: .
+    command: py.test -v
+
