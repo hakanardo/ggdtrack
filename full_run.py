@@ -5,7 +5,7 @@ from ggdtrack.klt_det_connect import prep_training_graphs
 from ggdtrack.model import NNModelGraphresPerConnection
 from ggdtrack.train import train_graphres_minimal
 
-dataset = Duke("/mnt/storage/duke")
+dataset = Duke("/home/hakan/src/duke")
 dataset.download()
 
 dataset.prepare()

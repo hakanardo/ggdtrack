@@ -2,20 +2,19 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from ggdtrack.graph_diff import GraphDiffList
+from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
 from ggdtrack.model import NNModelGraphresPerConnection
-
 
 class TestHigh:
     def test_ggd_batches(self):
-        graphres = torch.load("test_data/duke_graph_1_00180640.pck")
+        graphres = torch.load("data/basic-duke_graph_3_00190415.pck")
 
         with TemporaryDirectory() as tmpdir:
-            lst = GraphDiffList(tmpdir)
-
             model = NNModelGraphresPerConnection()
-            model.load_state_dict(torch.load("test_data/duke_graphres_model_000.pyt"))
+            model.load_state_dict(torch.load("data/snapshot_009.pyt")['model_state'])
             model.eval()
+
+            lst = GraphDiffList(tmpdir, model)
 
             old = []
             batch_size = 4
@@ -26,6 +25,7 @@ class TestHigh:
                 lst.append(graphres[i])
 
             for i0 in range(0, n, batch_size):
-                l = model.ggd_batch_forward(make_ggd_batch([lst[i] for i in range(i0, i0 + batch_size)]))
+                batch = make_ggd_batch([lst[i] for i in range(i0, i0 + batch_size)])
+                l = model.ggd_batch_forward(batch)
                 for i in range(i0, i0 + batch_size):
                     assert abs(l[i-i0].item() - old[i]) < 1e-3

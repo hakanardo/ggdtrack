@@ -14,8 +14,15 @@ from ggdtrack.utils import parallel, save_json, save_torch, load_pickle
 import numpy as np
 
 
+def as_tensor(x):
+    if not isinstance(x, torch.Tensor):
+        x = torch.tensor(x, dtype=torch.float)
+    return x
+
 class GraphBatch(namedtuple('GraphBatch', ['edge', 'detection', 'entries'])):
     def __new__(cls, edge, detection, entries):
+        if not isinstance(edge, torch.Tensor):
+            edge = [(as_tensor(klt), as_tensor(long)) for klt, long in edge]
         if not isinstance(detection, torch.Tensor):
             detection = torch.tensor([d for d in detection], dtype=torch.float)
         if not isinstance(entries, torch.Tensor):

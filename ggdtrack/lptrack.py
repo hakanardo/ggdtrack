@@ -1,4 +1,10 @@
+from bisect import bisect
+
+import cv2
 from pplp import LinearProgram
+from vi3o import view
+import numpy as np
+
 
 
 def lp_track(graph, connection_batch, detection_weight_features, model, verbose=False):
@@ -61,3 +67,33 @@ def interpolate_missing_detections(tracks, cpy=False):
             new_tr.append(det)
         tr[:] = new_tr
     return tracks
+
+def show_tracks(scene, tracks, frame_dets=()):
+    if not tracks:
+        return
+    first_frame = min(tr[0].frame for tr in tracks)
+    last_frame = max(tr[-1].frame for tr in tracks)
+    for f in range(first_frame, last_frame+1):
+        img = scene.frame(f)
+
+        if f in frame_dets:
+            for d in frame_dets[f]:
+                d.draw(img, color=(255,0,0))
+
+        for tr_id, tr in enumerate(tracks):
+            if tr[0].frame <= f <= tr[-1].frame:
+                det = tr[bisect([det.frame for det in tr], f)-1]
+                assert det.frame == f # Did you interpolate_missing_detections(tracks)?
+                det.draw(img, label=tr_id)
+
+        cv2.polylines(img, np.array([scene.roi()]), True, (0,0,0), thickness=3)
+        cv2.polylines(img, np.array([scene.roi()]), True, (255,255,255), thickness=1)
+
+
+        view(img)
+        # imwrite(img, "dbg/%.8d.jpg" % f)
+
+if __name__ == '__main__':
+    from ggdtrack.duke_dataset import Duke
+    from ggdtrack.utils import load_pickle
+    show_tracks(Duke('/home/hakan/src/duke').scene(3), interpolate_missing_detections(load_pickle("tracks/duke_graph_3_00190415.pck")))
