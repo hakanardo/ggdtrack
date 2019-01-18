@@ -7,6 +7,7 @@ from ggdtrack.train import train_graphres_minimal
 
 dataset = Duke("/home/hakan/src/duke")
 dataset.download()
+exit()
 
 dataset.prepare()
 prep_training_graphs(dataset)

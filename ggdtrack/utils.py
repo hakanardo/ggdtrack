@@ -4,7 +4,11 @@ import uuid
 from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
 import pickle
+from urllib.parse import urlparse
+
 import torch
+
+from torch.utils.model_zoo import _download_url_to_file
 
 import sys
 sys.setrecursionlimit(100000)
@@ -61,3 +65,12 @@ def load_pickle(filename):
 load_torch = torch.load
 
 default_torch_device = torch.device('cpu')
+
+def download_file(url, dest_dir):
+    os.makedirs(dest_dir, exist_ok=True)
+    parts = urlparse(url)
+    filename = os.path.basename(parts.path)
+    filename = os.path.join(dest_dir, filename)
+    if not os.path.exists(filename):
+        print("Downloading", url)
+        _download_url_to_file(url, filename, None, True)

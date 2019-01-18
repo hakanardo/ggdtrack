@@ -5,9 +5,12 @@ import cv2
 import numpy as np
 import os
 import h5py
+import torch
 from scipy import io
 import pickle
+
 from ggdtrack.dataset import Dataset, Detection, Scene
+from ggdtrack.utils import download_file
 
 
 class Duke(Dataset):
@@ -123,47 +126,17 @@ class Duke(Dataset):
         return self._rois[camera]
 
     def download(self):
-        path = os.path.dirname(self.path)
-        os.system('''
-            mkdir -p %s
-            pushd %s
-            mkdir DukeMTMC
-            pushd DukeMTMC
-            mkdir -p ground_truth calibration detections frames masks videos detections/DPM detections/openpose
-            
-            pushd ground_truth
-            wget http://vision.cs.duke.edu/DukeMTMC/data/ground_truth/trainval.mat
-            wget http://vision.cs.duke.edu/DukeMTMC/data/ground_truth/trainvalRaw.mat
-            popd
-            
-            pushd calibration
-            wget http://vision.cs.duke.edu/DukeMTMC/data/calibration/calibration.txt
-            wget http://vision.cs.duke.edu/DukeMTMC/data/calibration/camera_position.txt
-            wget http://vision.cs.duke.edu/DukeMTMC/data/calibration/ROIs.txt
-            popd
-            
-            pushd detections/openpose
-            for i in `seq 8`; do
-                wget http://vision.cs.duke.edu/DukeMTMC/data/detections/openpose/camera$i.mat
-            done
-            popd
-            
-            pushd detections/DPM
-            for c in `seq 8`; do
-                wget http://vision.cs.duke.edu/DukeMTMC/data/detections/DPM/camera$c.mat
-            done
-            popd
-            
-            for c in `seq 8`; do
-                mkdir videos/camera$c
-                pushd videos/camera$c
-                for p in `seq 0 9`; do
-                    wget http://vision.cs.duke.edu/DukeMTMC/data/videos/camera$c/`printf '%%.5d' $p`.MTS
-                done
-                popd
-            done
-            popd
-        ''' % (path, path))
+        download_file('http://vision.cs.duke.edu/DukeMTMC/data/ground_truth/trainval.mat', os.path.join(self.path, "ground_truth"))
+        download_file('http://vision.cs.duke.edu/DukeMTMC/data/ground_truth/trainvalRaw.mat', os.path.join(self.path, "ground_truth"))
+        download_file('http://vision.cs.duke.edu/DukeMTMC/data/calibration/calibration.txt', os.path.join(self.path, "calibration"))
+        download_file('http://vision.cs.duke.edu/DukeMTMC/data/calibration/camera_position.txt', os.path.join(self.path, "calibration"))
+        download_file('http://vision.cs.duke.edu/DukeMTMC/data/calibration/ROIs.txt', os.path.join(self.path, "calibration"))
+
+        for i in range(1, 9):
+            download_file('http://vision.cs.duke.edu/DukeMTMC/data/detections/openpose/camera%d.mat' % i, os.path.join(self.path, "detections/openpose"))
+            download_file('http://vision.cs.duke.edu/DukeMTMC/data/detections/DPM/camera%d.mat' % i, os.path.join(self.path, "detections/DPM"))
+            for j in range(10):
+                download_file('http://vision.cs.duke.edu/DukeMTMC/data/videos/camera%d/%.5d.MTS' % (i, j), os.path.join(self.path, "videos/camera%d" % i))
 
     def prepare(self):
         self.convert_ground_truth()
