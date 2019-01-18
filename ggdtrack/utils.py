@@ -59,3 +59,5 @@ def load_pickle(filename):
         return pickle.load(fd)
 
 load_torch = torch.load
+
+default_torch_device = torch.device('cpu')

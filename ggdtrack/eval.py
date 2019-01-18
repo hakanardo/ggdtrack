@@ -1,12 +1,20 @@
 import os
+from collections import defaultdict
 from collections import namedtuple
+from glob import glob
+from random import shuffle
 from tempfile import TemporaryDirectory
 
+import motmetrics
 import torch
+import numpy as np
+from shapely.geometry import Point
+from shapely.geometry import Polygon
 
 from ggdtrack.klt_det_connect import graph_names
+from ggdtrack.lptrack import lp_track, interpolate_missing_detections
 from ggdtrack.mmap_array import VarHMatrixList
-from ggdtrack.utils import load_pickle, save_torch, parallel
+from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle
 
 
 class ConnectionBatch(namedtuple('ConnectionBatch', ['klt_idx', 'klt_data', 'long_idx', 'long_data'])):
@@ -55,8 +63,113 @@ def prep_eval_graphs(dataset, model, threads=6):
     for i, n in enumerate(parallel(prep_eval_graph_worker, jobs, threads)):
         print('%d/%d: %s'% (i + 1, len(jobs), n))
 
+def prep_eval_tracks_worker(args):
+    model, name, device = args
+    ofn = os.path.join("tracks", os.path.basename(name))
+    if not os.path.exists(ofn):
+        graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
+        detection_weight_features.to(device)
+        connection_batch.to(device)
+        tracks = lp_track(graph, connection_batch, detection_weight_features, model)
+        for tr in tracks:
+            for det in tr:
+                det.__dict__ = {}
+        save_pickle(tracks, ofn)
+    return ofn
+
+def prep_eval_tracks(dataset, logdir, model, device=default_torch_device, part='eval', threads=6, limit=None):
+    if os.path.isfile(logdir):
+        fn = logdir
+    else:
+        fn = sorted(glob("%s/snapshot_???.pyt" % logdir))[-1]
+    model.load_state_dict(torch.load(fn)['model_state'])
+    model.eval()
+    model.to(device)
+
+    if limit is None:
+        limit = graph_names(dataset, part)
+    jobs = [(model, name, device) for name, cam in limit]
+    shuffle(jobs)
+
+    for i, n in enumerate(parallel(prep_eval_tracks_worker, jobs, threads)):
+        print('%d/%d: %s'% (i+1, len(jobs), n))
+
+class MotMetrics:
+    def __init__(self, overall=False, iou_threshold=0.5):
+        self.accumulators = []
+        self.names = []
+        self.overall = overall
+        self.iou_threshold = iou_threshold
+
+    def add(self, tracks, gt_frames, name='test'):
+        if not tracks:
+            return
+        acc = motmetrics.MOTAccumulator()
+        self.accumulators.append(acc)
+        self.names.append(name)
+        self.update(tracks, gt_frames)
+
+    def update(self, tracks, gt_frames):
+        track_frames = defaultdict(list)
+        for i, tr in enumerate(tracks):
+            for det in tr:
+                det.track_id = i
+                track_frames[det.frame].append(det)
+        frames = track_frames.keys()
+        frames = range(min(frames), max(frames)+1)
+        acc = self.accumulators[-1]
+        for f in frames:
+            gt = [d for d in gt_frames[f]]
+            id_gt = [d.id for d in gt]
+            id_res = [d.track_id for d in track_frames[f]]
+            dists = np.array([[1 - d1.iou(d2) for d2 in track_frames[f]] for d1 in gt])
+            dists[dists > self.iou_threshold] = np.nan
+            acc.update(id_gt, id_res, dists, f)
+
+    def summary(self):
+        mh = motmetrics.metrics.create()
+        summary= mh.compute_many(self.accumulators, metrics=['idf1', 'idp', 'idr', 'mota', 'motp', 'num_frames'],
+                               names=self.names, generate_overall=self.overall)
+        return motmetrics.io.render_summary(
+            summary,
+            formatters=mh.formatters,
+            namemap=motmetrics.io.motchallenge_metric_names
+        )
+
+def filter_out_non_roi_dets(scene, tracks):
+    roi = Polygon(scene.roi())
+    tracks[:] = [[det for det in tr if roi.contains(Point(det.cx, det.bottom))]
+                 for tr in tracks]
+    tracks[:] = [tr for tr in tracks if tr]
+
+def eval_prepped_tracks(dataset):
+    metrics = MotMetrics(True)
+    metrics_int = MotMetrics(True)
+    for name, cam in graph_names(dataset, 'eval'):
+        print(name)
+        scene = dataset.scene(cam)
+        gt_frames = scene.ground_truth()
+        tracks_name = os.path.join("tracks", os.path.basename(name))
+        tracks = load_pickle(tracks_name)
+        filter_out_non_roi_dets(scene, tracks)
+
+        metrics.add(tracks, gt_frames, name)
+        interpolate_missing_detections(tracks)
+        metrics_int.add(tracks, gt_frames, name + 'i')
+
+    res = metrics.summary()
+    res_int = metrics_int.summary()
+    print("Result")
+    print(res)
+    print("\nResult interpolated")
+    print(res_int)
+    return res, res_int
+
+
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    prep_eval_graphs(Duke('/home/hakan/src/duke'), NNModelGraphresPerConnection)
-
+    dataset = Duke('/home/hakan/src/duke')
+    # prep_eval_graphs(dataset, NNModelGraphresPerConnection)
+    # prep_eval_tracks(dataset, "logdir", NNModelGraphresPerConnection())
+    eval_prepped_tracks(dataset)

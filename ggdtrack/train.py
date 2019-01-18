@@ -10,6 +10,7 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
+from ggdtrack.utils import default_torch_device
 
 if True: # Patch pytorch
     string_classes = torch._six.string_classes
@@ -52,7 +53,7 @@ class NormStats:
         return self.sa2 / self.n - self.sa**2 / self.n**2
 
 
-def train_graphres_minimal(dataset, logdir, model, device=torch.device('cpu'), limit=None, epochs=10,
+def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, limit=None, epochs=10,
                            resume=False, mean_from=None,
                            batch_size=256, learning_rate=1e-3, max_time=np.inf):
     criterion = nn.BCEWithLogitsLoss()
