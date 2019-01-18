@@ -1,3 +1,4 @@
+import os
 from tempfile import TemporaryDirectory
 
 import torch
@@ -5,13 +6,15 @@ import torch
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
 from ggdtrack.model import NNModelGraphresPerConnection
 
+mydir = os.path.dirname(__file__)
+
 class TestHigh:
     def test_ggd_batches(self):
-        graphres = torch.load("data/basic-duke_graph_3_00190415.pck")
+        graphres = torch.load(os.path.join(mydir, "data", "basic-duke_graph_3_00190415.pck"))
 
         with TemporaryDirectory() as tmpdir:
             model = NNModelGraphresPerConnection()
-            model.load_state_dict(torch.load("data/snapshot_009.pyt")['model_state'])
+            model.load_state_dict(torch.load(os.path.join(mydir, "data", "snapshot_009.pyt"))['model_state'])
             model.eval()
 
             lst = GraphDiffList(tmpdir, model)
