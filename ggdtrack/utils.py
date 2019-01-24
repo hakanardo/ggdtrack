@@ -5,10 +5,9 @@ from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
 import pickle
 from urllib.parse import urlparse
+import requests
 
 import torch
-
-from torch.utils.model_zoo import _download_url_to_file
 
 import sys
 
@@ -30,37 +29,38 @@ def parallel_run(worker, jobs, threads=cpu_count(), tqdm_label=None):
     for _ in parallel(worker, jobs, threads, tqdm_label):
         pass
 
+class AtomicFile:
+    def __init__(self, filename, mode="wb"):
+        self.filename = filename
+        self.tmp_filename = filename + '.' + str(uuid.uuid4()) + '.tmp'
+        self.mode = mode
+
+    def __enter__(self):
+        os.makedirs(os.path.dirname(self.filename), exist_ok=True)
+        self.fd = open(self.tmp_filename, self.mode)
+        return self.fd
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.fd.close()
+        if os.path.exists(self.filename):
+            os.unlink(self.filename)
+        os.link(self.tmp_filename, self.filename)
+        os.unlink(self.tmp_filename)
 
 
 def save_json(obj, filename):
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    tmp_filename = filename + '.' + str(uuid.uuid4()) + '.tmp'
-    with open(tmp_filename, "w") as fd:
+    with AtomicFile(filename, "w") as fd:
         json.dump(obj, fd)
-    if os.path.exists(filename):
-        os.unlink(filename)
-    os.link(tmp_filename, filename)
-    os.unlink(tmp_filename)
 
 
 def save_pickle(obj, filename):
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    tmp_filename = filename + str(uuid.uuid4()) + '.tmp'
-    with open(tmp_filename, "wb") as fd:
+    with AtomicFile(filename) as fd:
         pickle.dump(obj, fd, -1)
-    if os.path.exists(filename):
-        os.unlink(filename)
-    os.link(tmp_filename, filename)
-    os.unlink(tmp_filename)
+
 
 def save_torch(obj, filename):
-    os.makedirs(os.path.dirname(filename), exist_ok=True)
-    tmp_filename = filename + str(uuid.uuid4()) + '.tmp'
-    torch.save(obj, tmp_filename, pickle_protocol=-1)
-    if os.path.exists(filename):
-        os.unlink(filename)
-    os.link(tmp_filename, filename)
-    os.unlink(tmp_filename)
+    with AtomicFile(filename) as fd:
+        torch.save(obj, fd, pickle_protocol=-1)
 
 def load_json(filename):
     with open(filename, "r") as fd:
@@ -74,6 +74,7 @@ load_torch = torch.load
 
 default_torch_device = torch.device('cpu')
 
+
 def download_file(url, dest_dir):
     os.makedirs(dest_dir, exist_ok=True)
     parts = urlparse(url)
@@ -81,4 +82,16 @@ def download_file(url, dest_dir):
     filename = os.path.join(dest_dir, filename)
     if not os.path.exists(filename):
         print("Downloading", url)
-        _download_url_to_file(url, filename, None, True)
+        req = requests.get(url, stream=True)
+        file_size = int(req.headers["Content-Length"])
+
+        with AtomicFile(filename) as fd:
+            with tqdm(total=file_size) as pbar:
+                while True:
+                    buffer = req.raw.read(8192)
+                    if len(buffer) == 0:
+                        break
+                    fd.write(buffer)
+                    pbar.update(len(buffer))
+
+

@@ -351,4 +351,4 @@ def pose2bb(pose):
     return bb
 
 if __name__ == '__main__':
-    Duke("/mnt/storage/duke").download()
+    Duke("/home/hakan/src/duke").download()
