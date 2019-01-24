@@ -9,7 +9,7 @@ dataset = Duke("/home/hakan/src/duke")
 dataset.download()
 dataset.prepare()
 
-prep_training_graphs(dataset, limit=10)
+prep_training_graphs(dataset, limit=100)
 
 model = NNModelGraphresPerConnection()
 prep_minimal_graph_diffs(dataset, model)
