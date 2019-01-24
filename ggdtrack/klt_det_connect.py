@@ -240,7 +240,7 @@ def prep_training_graphs_worker(arg):
     return part, (graph_name, scene.name)
 
 
-def prep_training_graphs(dataset, threads=6, segment_length_s=10, segment_overlap_s=1, limit=None):
+def prep_training_graphs(dataset, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None):
     lsts = {n: [] for n in dataset.parts.keys()}
     jobs = []
     for part in lsts.keys():

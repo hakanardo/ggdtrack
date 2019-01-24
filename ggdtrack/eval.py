@@ -59,7 +59,7 @@ def prep_eval_graph_worker(args):
     save_torch((graph, detection_weight_features, connection_batch), ofn)
     return ofn
 
-def prep_eval_graphs(dataset, model, threads=6):
+def prep_eval_graphs(dataset, model, threads=None):
     jobs = [(model, name) for name, cam in graph_names(dataset, "eval")]
     parallel_run(prep_eval_graph_worker, jobs, threads, "Prepping eval graphs")
 
@@ -77,7 +77,7 @@ def prep_eval_tracks_worker(args):
         save_pickle(tracks, ofn)
     return ofn
 
-def prep_eval_tracks(dataset, logdir, model, device=default_torch_device, part='eval', threads=6, limit=None):
+def prep_eval_tracks(dataset, logdir, model, device=default_torch_device, part='eval', threads=None, limit=None):
     if os.path.isfile(logdir):
         fn = logdir
     else:

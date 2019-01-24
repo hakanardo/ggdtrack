@@ -280,7 +280,7 @@ def prep_minimal_graph_diff_worker(arg):
     save_torch(find_minimal_graph_diff(dataset.scene(cam), load_pickle(fn),  model), bfn)
     return part, bfn
 
-def prep_minimal_graph_diffs(dataset, model, threads=6, limit=None):
+def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
     trainval = {'train': [], 'eval': []}
     diff_lists = {}
     jobs = []

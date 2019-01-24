@@ -17,6 +17,8 @@ sys.setrecursionlimit(100000)
 
 
 def parallel(worker, jobs, threads=cpu_count(), tqdm_label=None):
+    if threads is None:
+        threads=cpu_count()
     if threads > 1:
         p = Pool(threads)
         mymap = p.imap_unordered
