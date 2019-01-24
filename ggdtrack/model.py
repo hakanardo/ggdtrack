@@ -131,7 +131,7 @@ class NNModelGraphresPerConnection(NNModel):
         edge_scores = self.connection_batch_forward(batch) * batch.edge_signs
         edge_scores = idx_sum(edge_scores, batch.edge_idx, 1)
 
-        if batch.detection_signs.size == 0:
+        if batch.detection_signs.nelement() == 0:
             detection_scores = torch.zeros((len(batch.detection_idx) - 1, 1))
         else:
             detection_scores = batch.detection_signs * self.detection_model(batch.detections)
@@ -217,8 +217,7 @@ def idx_mean(scores, idx, width):
     scores = torch.cumsum(scores, 0)
     n = (idx[1:] - idx[:-1]).to(dtype=torch.float)
     scores = scores[idx]
-    mean = (scores[1:] - scores[:-1]) / n[:, None]
-    mean = torch.where(n.reshape(-1,1)==0, torch.zeros_like(mean), mean)
+    mean = (scores[1:] - scores[:-1]) / torch.max(n[:, None], torch.ones_like(n[:, None]))
     return mean, n
 
 def idx_sum(scores, idx, width):
