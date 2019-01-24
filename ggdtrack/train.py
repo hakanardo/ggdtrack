@@ -105,10 +105,10 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
             edge_long_stats.extend(batch.long_data)
         model.detection_model.mean = det_stats.mean
         model.detection_model.std = torch.sqrt(det_stats.var)
-        model.edge_model.klt_model.mean = torch.tensor(edge_klt_stats.mean, dtype=torch.float32)
-        model.edge_model.klt_model.std = torch.sqrt(torch.tensor(edge_klt_stats.var, dtype=torch.float32))
-        model.edge_model.long_model.mean = torch.tensor(edge_long_stats.mean, dtype=torch.float32)
-        model.edge_model.long_model.std = torch.sqrt(torch.tensor(edge_long_stats.var, dtype=torch.float32))
+        model.edge_model.klt_model.mean = edge_klt_stats.mean
+        model.edge_model.klt_model.std = torch.sqrt(edge_klt_stats.var)
+        model.edge_model.long_model.mean = edge_long_stats.mean
+        model.edge_model.long_model.std = torch.sqrt(edge_long_stats.var)
 
     start_time = time.time()
     for epoch in range(start_epoch, start_epoch + epochs):
