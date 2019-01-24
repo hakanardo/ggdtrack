@@ -340,15 +340,15 @@ def merge_idx(idxes):
 
 def make_ggd_batch(ggds):
     return GraphDiffBatch(
-        klt_data=torch.tensor(np.vstack(d.klt_data for d in ggds), dtype=torch.float32),
+        klt_data=torch.tensor(np.vstack([d.klt_data for d in ggds]), dtype=torch.float32),
         klt_idx=torch.tensor(merge_idx(d.klt_idx for d in ggds), dtype=torch.long),
-        long_data=torch.tensor(np.vstack(d.long_data for d in ggds), dtype=torch.float32),
+        long_data=torch.tensor(np.vstack([d.long_data for d in ggds]), dtype=torch.float32),
         long_idx=torch.tensor(merge_idx(d.long_idx for d in ggds), dtype=torch.long),
-        edge_signs=torch.tensor(np.vstack(d.edge_signs for d in ggds), dtype=torch.float32),
+        edge_signs=torch.tensor(np.vstack([d.edge_signs for d in ggds]), dtype=torch.float32),
         edge_idx=torch.tensor(np.cumsum([0] + [len(d.edge_signs)  for d in ggds]), dtype=torch.long),
 
-        detections=torch.tensor(np.vstack(d.detections for d in ggds), dtype=torch.float32),
-        detection_signs=torch.tensor(np.vstack(d.detection_signs for d in ggds), dtype=torch.float32),
+        detections=torch.tensor(np.vstack([d.detections for d in ggds]), dtype=torch.float32),
+        detection_signs=torch.tensor(np.vstack([d.detection_signs for d in ggds]), dtype=torch.float32),
         detection_idx=torch.tensor(np.cumsum([0] + [len(d.detection_signs)  for d in ggds]), dtype=torch.long),
 
         entry_diffs=torch.tensor(np.array([d.entry_diff for d in ggds], dtype=np.float32), dtype=torch.float32))
