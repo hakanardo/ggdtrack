@@ -100,11 +100,11 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         edge_klt_stats = NormStats()
         edge_long_stats = NormStats()
         for i, batch in enumerate(train_loader):
-            batch.to(device)
+            batch = batch.to(device)
             det_stats.extend(batch.detections)
             edge_klt_stats.extend(batch.klt_data)
             edge_long_stats.extend(batch.long_data)
-            if i > 100: # W should have a good estimate by now
+            if i > 100: # We should have a good estimate by now
                 break
         model.detection_model.mean = det_stats.mean
         model.detection_model.std = torch.sqrt(det_stats.var)
