@@ -1,3 +1,10 @@
+if __name__ == '__main__':
+    from torch.multiprocessing import set_start_method
+    set_start_method('spawn')
+
+import warnings
+warnings.filterwarnings("ignore")
+
 import click
 
 from ggdtrack.duke_dataset import Duke

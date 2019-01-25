@@ -72,8 +72,8 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         start_epoch = 0
 
 
-    train_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_train" % (dataset.name, model.feature_name), model, "r")
-    eval_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_eval" % (dataset.name, model.feature_name), model, "r")
+    train_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_train" % (dataset.name, model.feature_name), model, "r", lazy=True)
+    eval_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_eval" % (dataset.name, model.feature_name), model, "r", lazy=True)
     if limit:
         n = int(limit * len(train_data))
         train_data, _ = torch.utils.data.random_split(train_data, [n, len(train_data) - n])

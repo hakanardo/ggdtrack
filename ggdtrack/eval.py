@@ -68,8 +68,8 @@ def prep_eval_tracks_worker(args):
     ofn = os.path.join("cachedir/tracks", os.path.basename(name))
     if not os.path.exists(ofn):
         graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
-        detection_weight_features.to(device)
-        connection_batch.to(device)
+        detection_weight_features = detection_weight_features.to(device)
+        connection_batch = connection_batch.to(device)
         tracks = lp_track(graph, connection_batch, detection_weight_features, model)
         for tr in tracks:
             for det in tr:
