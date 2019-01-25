@@ -1,7 +1,7 @@
 full_run_local:
-	docker run -ti -v `pwd`:/workspace -v /home/hakan/src/duke:/home/hakan/src/duke ggdtrack python full_run.py
+	nvidia-docker run -ti -v `pwd`:/workspace -v /home/hakan/src/duke:/home/hakan/src/duke ggdtrack python full_run.py
 full_run:
-	docker run -ti -v /home/hakan/src/duke/cachedir:/workspace/cachedir -v /home/hakan/src/duke:/home/hakan/src/duke ggdtrack python full_run.py
+	nvidia-docker run -ti -v /home/hakan/src/duke/cachedir:/workspace/cachedir -v /home/hakan/src/duke:/home/hakan/src/duke hakanardo/ggdtrack python full_run.py
 test:
 	docker run -ti -v `pwd`:/workspace ggdtrack py.test -v
 build:
