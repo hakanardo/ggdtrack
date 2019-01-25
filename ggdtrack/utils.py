@@ -74,11 +74,10 @@ def load_pickle(filename):
 
 load_torch = torch.load
 
-if torch.cuda.is_available()
+if not torch.cuda.is_available():
     default_torch_device = torch.device('cpu')
 else:
     default_torch_device = torch.device('cuda')
-
 
 def download_file(url, dest_dir):
     os.makedirs(dest_dir, exist_ok=True)

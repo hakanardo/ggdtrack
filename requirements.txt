@@ -10,4 +10,4 @@ pplp==0.1
 requests==2.12.4
 lapsolver==1.0.2
 https://github.com/hakanardo/py-motmetrics/archive/d35f316e9c41ee163faf82c328335f37c4ad6775.zip
-
+click==6.6

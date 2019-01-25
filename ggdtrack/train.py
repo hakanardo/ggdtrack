@@ -59,6 +59,8 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+    print(device)
+
     if resume:
         fn = sorted(glob("%s/???_snapshot.pyt" % (logdir)))[-1]
         snapshot = torch.load(fn)

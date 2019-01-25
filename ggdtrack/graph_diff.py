@@ -9,7 +9,7 @@ import torch
 from ggdtrack.dataset import ground_truth_tracks
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.mmap_array import as_database, VarHMatrixList, ScalarList
-from ggdtrack.utils import parallel, save_json, save_torch, load_pickle
+from ggdtrack.utils import parallel, save_json, save_torch, load_pickle, load_json
 
 import numpy as np
 
@@ -282,6 +282,7 @@ def prep_minimal_graph_diff_worker(arg):
 
 def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
     trainval = {'train': [], 'eval': []}
+    final_trainval = {n: [] for n in trainval.keys()}
     diff_lists = {}
     jobs = []
     os.makedirs("cachedir/minimal_graph_diff", exist_ok=True)
@@ -297,6 +298,18 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
         for fn, cam in entries:
             bfn = os.path.join("cachedir/minimal_graph_diff", model.feature_name + '-' + os.path.basename(fn))
             jobs.append((dataset, cam, part, model, fn, bfn))
+            final_trainval[part].append(bfn)
+
+    trainval_name = "cachedir/minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name)
+    if os.path.exists(trainval_name):
+        current_trainval = load_json(trainval_name)
+        for part in trainval.keys():
+            if set(current_trainval[part]) != set(final_trainval[part]):
+                break
+        else:
+            return
+
+    for part in trainval.keys():
         dn = "cachedir/minimal_graph_diff/%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part)
         if os.path.exists(dn):
             rmtree(dn)
@@ -304,7 +317,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
 
     for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
         trainval[part].append(bfn)
-        save_json(trainval, "cachedir/minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name))
+        save_json(trainval, trainval_name)
         graphdiff = torch.load(bfn)
         lst = diff_lists[part]
         for gd in graphdiff:
