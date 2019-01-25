@@ -1,6 +1,3 @@
 build
-graphs
-logdir
-minimal_graph_diff
 __pycache__
-tracks
+cachedir
