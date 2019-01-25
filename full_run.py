@@ -1,6 +1,6 @@
 if __name__ == '__main__':
     from torch.multiprocessing import set_start_method
-    set_start_method('spawn')
+    set_start_method('forkserver')
 
 import warnings
 warnings.filterwarnings("ignore")
