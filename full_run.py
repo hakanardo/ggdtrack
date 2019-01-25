@@ -15,9 +15,9 @@ model = NNModelGraphresPerConnection()
 prep_minimal_graph_diffs(dataset, model)
 prep_eval_graphs(dataset, model)
 
-train_graphres_minimal(dataset, "logdir", model)
+train_graphres_minimal(dataset, "cachedir/logdir", model)
 
-prep_eval_tracks(dataset, "logdir", model)
+prep_eval_tracks(dataset, "cachedir/logdir", model)
 eval_prepped_tracks(dataset)
 
 

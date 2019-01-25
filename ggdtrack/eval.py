@@ -65,7 +65,7 @@ def prep_eval_graphs(dataset, model, threads=None):
 
 def prep_eval_tracks_worker(args):
     model, name, device = args
-    ofn = os.path.join("tracks", os.path.basename(name))
+    ofn = os.path.join("cachedir/tracks", os.path.basename(name))
     if not os.path.exists(ofn):
         graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
         detection_weight_features.to(device)
@@ -147,7 +147,7 @@ def eval_prepped_tracks(dataset):
     for name, cam in tqdm(graph_names(dataset, 'eval'), 'Evaluating tracks'):
         scene = dataset.scene(cam)
         gt_frames = scene.ground_truth()
-        tracks_name = os.path.join("tracks", os.path.basename(name))
+        tracks_name = os.path.join("cachedir/tracks", os.path.basename(name))
         tracks = load_pickle(tracks_name)
         filter_out_non_roi_dets(scene, tracks)
 

@@ -284,7 +284,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
     trainval = {'train': [], 'eval': []}
     diff_lists = {}
     jobs = []
-    os.makedirs("minimal_graph_diff", exist_ok=True)
+    os.makedirs("cachedir/minimal_graph_diff", exist_ok=True)
     for part in trainval.keys():
         if limit is None:
             entries = graph_names(dataset, part)
@@ -295,16 +295,16 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
             shuffle(entries)
             entries = entries[:limit]
         for fn, cam in entries:
-            bfn = os.path.join("minimal_graph_diff", model.feature_name + '-' + os.path.basename(fn))
+            bfn = os.path.join("cachedir/minimal_graph_diff", model.feature_name + '-' + os.path.basename(fn))
             jobs.append((dataset, cam, part, model, fn, bfn))
-        dn = "minimal_graph_diff/%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part)
+        dn = "cachedir/minimal_graph_diff/%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part)
         if os.path.exists(dn):
             rmtree(dn)
         diff_lists[part] = GraphDiffList(dn, model)
 
     for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
         trainval[part].append(bfn)
-        save_json(trainval, "minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name))
+        save_json(trainval, "cachedir/minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name))
         graphdiff = torch.load(bfn)
         lst = diff_lists[part]
         for gd in graphdiff:
