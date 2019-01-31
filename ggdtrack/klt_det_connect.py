@@ -251,7 +251,7 @@ def prep_training_graphs(dataset, threads=None, segment_length_s=10, segment_ove
             f0 = scene.parts[part].start
             while f0 + segment_length <  scene.parts[part].stop:
                 if f0 + 2*segment_length >  scene.parts[part].stop:
-                    myseg = scene.parts[part].stop - f0 + 1
+                    myseg = scene.parts[part].stop - f0 - 1
                 else:
                     myseg = segment_length
                 graph_name = "cachedir/graphs/%s_graph_%s_%.8d.pck" % (dataset.name, scene_name, f0)
@@ -283,4 +283,6 @@ if __name__ == '__main__':
     # scene = Duke('/home/hakan/src/duke').scene(1)
     # make_graph(video_detections(scene, 124472, 100, 0), scene.fps, True, True)
 
-    prep_training_graphs(Duke('/home/hakan/src/duke'))
+    # prep_training_graphs(Duke('/home/hakan/src/duke'))
+    # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))
+    Duke('/home/hakan/src/duke').scene(7).frame(336553 + 1129-2)
