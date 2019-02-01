@@ -1,9 +1,8 @@
-if __name__ == '__main__':
-    from torch.multiprocessing import set_start_method
-    set_start_method('forkserver')
-
-import warnings
-warnings.filterwarnings("ignore")
+# if __name__ == '__main__':
+#     from torch.multiprocessing import set_start_method
+#     set_start_method('forkserver')
+# import warnings
+# warnings.filterwarnings("ignore")
 
 import click
 
@@ -30,7 +29,7 @@ def main(datadir, limit):
 
     train_graphres_minimal(dataset, "cachedir/logdir", model)
 
-    prep_eval_tracks(dataset, "cachedir/logdir", model)
+    prep_eval_tracks(dataset, "cachedir/logdir", model, threads=1)
     eval_prepped_tracks(dataset)
 
 if __name__ == '__main__':
