@@ -72,6 +72,23 @@ def load_pickle(filename):
     with open(filename, "rb") as fd:
         return pickle.load(fd)
 
+
+def save_graph(graph, filename, promote_again=True):
+    indexes = {d: i for i, d in enumerate(graph)}
+    for d in graph:
+        d.demote_state(indexes)
+    save_pickle(graph, filename)
+    if promote_again:
+        for d in graph:
+            d.promote_state(graph)
+
+
+def load_graph(filename):
+    graph = load_pickle(filename)
+    for d in graph:
+        d.promote_state(graph)
+    return graph
+
 load_torch = torch.load
 
 if not torch.cuda.is_available():
@@ -97,5 +114,4 @@ def download_file(url, dest_dir):
                         break
                     fd.write(buffer)
                     pbar.update(len(buffer))
-
 

@@ -9,7 +9,7 @@ import torch
 from ggdtrack.dataset import ground_truth_tracks
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.mmap_array import as_database, VarHMatrixList, ScalarList
-from ggdtrack.utils import parallel, save_json, save_torch, load_pickle, load_json
+from ggdtrack.utils import parallel, save_json, save_torch, load_pickle, load_json, load_graph
 
 import numpy as np
 
@@ -277,7 +277,7 @@ def prep_minimal_graph_diff_worker(arg):
     dataset, cam, part, model, fn, bfn = arg
     if os.path.exists(bfn):
         return part, bfn
-    save_torch(find_minimal_graph_diff(dataset.scene(cam), load_pickle(fn),  model), bfn)
+    save_torch(find_minimal_graph_diff(dataset.scene(cam), load_graph(fn),  model), bfn)
     return part, bfn
 
 def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):

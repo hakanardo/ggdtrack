@@ -15,7 +15,8 @@ from tqdm import tqdm
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.lptrack import lp_track, interpolate_missing_detections
 from ggdtrack.mmap_array import VarHMatrixList
-from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle, parallel_run
+from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle, parallel_run, \
+    load_graph
 
 
 class ConnectionBatch(namedtuple('ConnectionBatch', ['klt_idx', 'klt_data', 'long_idx', 'long_data'])):
@@ -27,7 +28,7 @@ def prep_eval_graph_worker(args):
     ofn = graph_name + '-%s-eval_graph' % model.feature_name
     if os.path.exists(ofn):
         return ofn
-    graph = load_pickle(graph_name)
+    graph = load_graph(graph_name)
 
     with TemporaryDirectory() as tmpdir:
         detection_weight_features = []
@@ -60,7 +61,7 @@ def prep_eval_graph_worker(args):
     return ofn
 
 def prep_eval_graphs(dataset, model, threads=None):
-    jobs = [(model, name) for name, cam in graph_names(dataset, "eval")]
+    jobs = [(model, name) for part in ["eval", "test"] for name, cam in graph_names(dataset, part)]
     parallel_run(prep_eval_graph_worker, jobs, threads, "Prepping eval graphs")
 
 def prep_eval_tracks_worker(args):
@@ -141,10 +142,10 @@ def filter_out_non_roi_dets(scene, tracks):
                  for tr in tracks]
     tracks[:] = [tr for tr in tracks if tr]
 
-def eval_prepped_tracks(dataset):
+def eval_prepped_tracks(dataset, part='eval'):
     metrics = MotMetrics(True)
     metrics_int = MotMetrics(True)
-    for name, cam in tqdm(graph_names(dataset, 'eval'), 'Evaluating tracks'):
+    for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
         scene = dataset.scene(cam)
         gt_frames = scene.ground_truth()
         tracks_name = os.path.join("cachedir/tracks", os.path.basename(name))

@@ -114,6 +114,16 @@ class Detection(namedtuple('Detection', ['frame', 'left', 'top', 'right', 'botto
     def update_mask(self, mask):
         mask[self.top:self.bottom, self.left:self.right] = 255
 
+    def demote_state(self, indexes):
+        if hasattr(self, '_box'):
+            del self._box
+        self.prev = {indexes[d] for d in self.prev}
+        self.next_weight_data = {indexes[d]: v for d, v in self.next_weight_data.items()}
+
+    def promote_state(self, graph):
+        self.prev = {graph[i] for i in self.prev}
+        self.next_weight_data = {graph[i]: v for i, v in self.next_weight_data.items()}
+
 
 class Dataset:
     name = 'Unknown'

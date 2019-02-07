@@ -6,7 +6,8 @@ from vi3o import view
 import numpy as np
 import pickle
 import os
-from ggdtrack.utils import parallel, save_json, save_pickle, load_json
+from ggdtrack.utils import parallel, save_json, save_pickle, load_json, save_graph
+
 
 class KltTrack:
     def __init__(self, idx, x, y):
@@ -63,7 +64,7 @@ def estimate_intradet_iou(detections):
                 det.max_intra_ioa = max(det.max_intra_ioa, ioa)
 
 
-def make_graph(video_detections, fps, save=False, show=False):
+def make_graph(video_detections, fps, show=False):
 
     tracks = []
     lk_params = dict( winSize  = (15, 15),
@@ -203,11 +204,6 @@ def make_graph(video_detections, fps, save=False, show=False):
                         connect(prd.original, det, ('long', prd))
             del tr.predictions[frame_idx]
 
-        # Save
-        if save and frame_idx % 100 == 0:
-            pickle.dump(graph, open("graph.pck", "wb"), -1)
-
-
         if show:
             for det in detections:
                 if det.pre_vs:
@@ -222,8 +218,7 @@ def make_graph(video_detections, fps, save=False, show=False):
         prev_gray = frame_gray
         if show:
             view(frame)
-    if save:
-        pickle.dump(graph, open("graph.pck", "wb"), -1)
+
     return graph
 
 def show_detections(viddet):
@@ -236,7 +231,7 @@ def prep_training_graphs_worker(arg):
     scene, f0, myseg, graph_name, part = arg
     if not os.path.exists(graph_name):
         graph = make_graph(video_detections(scene, f0, myseg), scene.fps)
-        save_pickle(graph, graph_name)
+        save_graph(graph, graph_name)
     return part, (graph_name, scene.name)
 
 
@@ -285,4 +280,5 @@ if __name__ == '__main__':
 
     # prep_training_graphs(Duke('/home/hakan/src/duke'))
     # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))
-    Duke('/home/hakan/src/duke').scene(7).frame(336553 + 1129-2)
+    # Duke('/home/hakan/src/duke').scene(7).frame(336553 + 1129-2)
+    prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))

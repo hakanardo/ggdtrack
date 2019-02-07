@@ -29,8 +29,12 @@ def main(datadir, limit):
 
     train_graphres_minimal(dataset, "cachedir/logdir", model)
 
-    prep_eval_tracks(dataset, "cachedir/logdir", model, threads=1)
-    eval_prepped_tracks(dataset)
+    prep_eval_tracks(dataset, "cachedir/logdir", model, 'eval', threads=1)
+    res, res_int = eval_prepped_tracks(dataset, 'eval')
+    open("cachedir/logdir/eval_results.txt", "w").write(res)
+    open("cachedir/logdir/eval_results_int.txt", "w").write(res_int)
+
+    prep_eval_tracks(dataset, "cachedir/logdir", model, 'test', threads=1)
 
 if __name__ == '__main__':
     main()
