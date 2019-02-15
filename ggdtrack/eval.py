@@ -30,7 +30,7 @@ def prep_eval_graph_worker(args):
         return ofn
     graph = load_graph(graph_name)
 
-    with TemporaryDirectory() as tmpdir:
+    with TemporaryDirectory(prefix="cachedir/") as tmpdir:
         detection_weight_features = []
         edge_weight_features_klt = VarHMatrixList(tmpdir, 'klt_data', 'klt_index', model.klt_feature_length)
         edge_weight_features_long = VarHMatrixList(tmpdir, 'long_data', 'long_index', model.long_feature_length)
