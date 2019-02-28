@@ -16,16 +16,17 @@ from ggdtrack.train import train_graphres_minimal
 @click.command()
 @click.option("--datadir", default="data", help="Directory into which the Duke dataset will be downloaded")
 @click.option("--limit", default=None, type=int, help="The number of graphs to use. Default is all of them.")
-def main(datadir, limit):
+@click.option("--threads", default=None, type=int, help="The number of threads to use. Default is one per CPU core.")
+def main(datadir, limit, threads):
     dataset = Duke(datadir)
     dataset.download()
     dataset.prepare()
 
-    prep_training_graphs(dataset, limit=limit)
+    prep_training_graphs(dataset, limit=limit, threads=threads)
 
     model = NNModelGraphresPerConnection()
-    prep_minimal_graph_diffs(dataset, model)
-    prep_eval_graphs(dataset, model)
+    prep_minimal_graph_diffs(dataset, model, threads=threads)
+    prep_eval_graphs(dataset, model, threads=threads)
 
     train_graphres_minimal(dataset, "cachedir/logdir", model)
 
