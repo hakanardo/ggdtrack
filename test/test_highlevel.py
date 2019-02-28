@@ -32,3 +32,4 @@ class TestHigh:
                 l = model.ggd_batch_forward(batch)
                 for i in range(i0, i0 + batch_size):
                     assert abs(l[i-i0].item() - old[i]) < 1e-3
+

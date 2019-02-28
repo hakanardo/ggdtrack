@@ -117,12 +117,15 @@ class Detection(namedtuple('Detection', ['frame', 'left', 'top', 'right', 'botto
     def demote_state(self, indexes):
         if hasattr(self, '_box'):
             del self._box
-        self.prev = {indexes[d] for d in self.prev}
+        self.prev = self.prev.__class__(indexes[d] for d in self.prev)
         self.next_weight_data = {indexes[d]: v for d, v in self.next_weight_data.items()}
 
     def promote_state(self, graph):
-        self.prev = {graph[i] for i in self.prev}
-        self.next_weight_data = {graph[i]: v for i, v in self.next_weight_data.items()}
+        self.prev = self.prev.__class__(graph[i] for i in self.prev)
+        next_weight_data = defaultdict(list)
+        for i, v in self.next_weight_data.items():
+            next_weight_data[graph[i]] = v
+        self.next_weight_data = next_weight_data
 
 
 class Dataset:

@@ -38,7 +38,9 @@ class AtomicFile:
         self.mode = mode
 
     def __enter__(self):
-        os.makedirs(os.path.dirname(self.filename), exist_ok=True)
+        dir_name = os.path.dirname(self.filename)
+        if dir_name:
+            os.makedirs(dir_name, exist_ok=True)
         self.fd = open(self.tmp_filename, self.mode)
         return self.fd
 
@@ -72,21 +74,26 @@ def load_pickle(filename):
     with open(filename, "rb") as fd:
         return pickle.load(fd)
 
-
-def save_graph(graph, filename, promote_again=True):
+def demote_graph(graph):
     indexes = {d: i for i, d in enumerate(graph)}
     for d in graph:
+        assert graph[indexes[d]] is d
+    for d in graph:
         d.demote_state(indexes)
+
+def promote_graph(graph):
+    for d in graph:
+        d.promote_state(graph)
+
+def save_graph(graph, filename, promote_again=True):
+    demote_graph(graph)
     save_pickle(graph, filename)
     if promote_again:
-        for d in graph:
-            d.promote_state(graph)
-
+        promote_graph(graph)
 
 def load_graph(filename):
     graph = load_pickle(filename)
-    for d in graph:
-        d.promote_state(graph)
+    promote_graph(graph)
     return graph
 
 load_torch = torch.load

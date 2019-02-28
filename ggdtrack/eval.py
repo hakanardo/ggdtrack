@@ -16,7 +16,7 @@ from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.lptrack import lp_track, interpolate_missing_detections
 from ggdtrack.mmap_array import VarHMatrixList
 from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle, parallel_run, \
-    load_graph
+    load_graph, demote_graph, promote_graph
 
 
 class ConnectionBatch(namedtuple('ConnectionBatch', ['klt_idx', 'klt_data', 'long_idx', 'long_data'])):
@@ -57,6 +57,7 @@ def prep_eval_graph_worker(args):
                                            torch.tensor(edge_weight_features_klt.data),
                                            torch.tensor(edge_weight_features_long.index.data),
                                            torch.tensor(edge_weight_features_long.data))
+    demote_graph(graph)
     save_torch((graph, detection_weight_features, connection_batch), ofn)
     return ofn
 
@@ -69,6 +70,7 @@ def prep_eval_tracks_worker(args):
     ofn = os.path.join("cachedir/tracks", os.path.basename(name))
     if not os.path.exists(ofn):
         graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
+        promote_graph(graph)
         detection_weight_features = detection_weight_features.to(device)
         connection_batch = connection_batch.to(device)
         tracks = lp_track(graph, connection_batch, detection_weight_features, model)
@@ -78,7 +80,7 @@ def prep_eval_tracks_worker(args):
         save_pickle(tracks, ofn)
     return ofn
 
-def prep_eval_tracks(dataset, logdir, model, device=default_torch_device, part='eval', threads=None, limit=None):
+def prep_eval_tracks(dataset, logdir, model, part='eval', device=default_torch_device, threads=None, limit=None):
     if os.path.isfile(logdir):
         fn = logdir
     else:
@@ -92,7 +94,7 @@ def prep_eval_tracks(dataset, logdir, model, device=default_torch_device, part='
     jobs = [(model, name, device) for name, cam in limit]
     shuffle(jobs)
 
-    parallel_run(prep_eval_tracks_worker, jobs, threads, "Prepping eval tracks")
+    parallel_run(prep_eval_tracks_worker, jobs, threads, "Prepping eval tracks for %s" % part)
 
 class MotMetrics:
     def __init__(self, overall=False, iou_threshold=0.5):

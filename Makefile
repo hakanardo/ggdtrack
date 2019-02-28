@@ -11,7 +11,7 @@ flatten:
 	export container-to-be-flatten | docker import - ggdtrack:flatt
 	docker rm container-to-be-flatten
 push:
-	docker tag ggdtrack hakanardo/ggdtrack:dev
+	docker tag ggdtrack hakanardo/ggdtrack:dev || docker tag -f ggdtrack hakanardo/ggdtrack:dev
 	docker push hakanardo/ggdtrack:dev
 
 .PHONY: build full_run test

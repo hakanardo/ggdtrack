@@ -1,6 +1,11 @@
+from copy import deepcopy
 from random import randrange
 import numpy as np
 from ggdtrack.dataset import Detection
+from ggdtrack.utils import load_pickle, demote_graph, promote_graph
+import os
+
+mydir = os.path.dirname(__file__)
 
 def slow_iou(self, other):
     b1 = self.box
@@ -54,4 +59,18 @@ class TestData:
             d2.update_mask(mask)
             assert mask[int(d1.cy), int(d1.cx)] == 255
             assert mask[int(d2.cy), int(d2.cx)] == 255
+
+    def test_demote_promote(self):
+        g1 = load_pickle(os.path.join(mydir, "data", "promoted_graph.pck"))
+        g2 = deepcopy(g1)
+        demote_graph(g1)
+        promote_graph(g1)
+
+        for i in range(len(g1)):
+            assert g1[i].prev == g2[i].prev
+            assert g1[i].next_weight_data == g2[i].next_weight_data
+            assert g1[i].prev.__class__ == g2[i].prev.__class__
+            assert g1[i].next_weight_data.__class__ == g2[i].next_weight_data.__class__
+
+
 

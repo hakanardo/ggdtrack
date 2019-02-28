@@ -281,4 +281,5 @@ if __name__ == '__main__':
     # prep_training_graphs(Duke('/home/hakan/src/duke'))
     # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))
     # Duke('/home/hakan/src/duke').scene(7).frame(336553 + 1129-2)
-    prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))
+    # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))
+    prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 54373, 600, "cachedir/graphs/duke_graph_2_00054373.pck", "??"))
