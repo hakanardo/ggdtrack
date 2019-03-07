@@ -26,7 +26,10 @@ def lp_track(graph, connection_batch, detection_weight_features, model, verbose=
     for d in graph:
         d.incomming = [p.outgoing[p.next.index(d)] for p in d.prev]
 
-    connection_weights = model.connection_batch_forward(connection_batch)
+    if len(connection_batch.klt_data) > 0:
+        connection_weights = model.connection_batch_forward(connection_batch)
+    else:
+        connection_weights = None
     connection_weight = 0
     for d in graph:
         lp.add_constraint(sum(d.outgoing) + d.exit - d.present == 0)

@@ -17,6 +17,7 @@ COPY ggdtrack /workspace/ggdtrack
 COPY setup.py /workspace/
 COPY test /workspace/test
 COPY full_run.py /workspace/
+COPY tst.py /workspace/
 RUN python setup.py install
 
 

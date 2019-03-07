@@ -68,6 +68,7 @@ def prep_eval_graphs(dataset, model, threads=None):
 def prep_eval_tracks_worker(args):
     model, name, device = args
     ofn = os.path.join("cachedir/tracks", os.path.basename(name))
+    print(ofn)
     if not os.path.exists(ofn):
         graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
         promote_graph(graph)
