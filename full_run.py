@@ -7,7 +7,7 @@
 import click
 
 from ggdtrack.duke_dataset import Duke
-from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks
+from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_csv
 from ggdtrack.graph_diff import prep_minimal_graph_diffs
 from ggdtrack.klt_det_connect import prep_training_graphs
 from ggdtrack.model import NNModelGraphresPerConnection
@@ -34,8 +34,10 @@ def main(datadir, limit, threads):
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open("cachedir/logdir/eval_results.txt", "w").write(res)
     open("cachedir/logdir/eval_results_int.txt", "w").write(res_int)
+    eval_prepped_tracks_csv(dataset, 'eval')
 
     prep_eval_tracks(dataset, "cachedir/logdir", model, 'test', threads=1)
+    eval_prepped_tracks_csv(dataset, "cachedir/logdir", 'test')
 
 if __name__ == '__main__':
     main()

@@ -8,6 +8,7 @@ from tempfile import TemporaryDirectory
 import motmetrics
 import torch
 import numpy as np
+from lap._lapjv import lapjv
 from shapely.geometry import Point
 from shapely.geometry import Polygon
 from tqdm import tqdm
@@ -61,14 +62,13 @@ def prep_eval_graph_worker(args):
     save_torch((graph, detection_weight_features, connection_batch), ofn)
     return ofn
 
-def prep_eval_graphs(dataset, model, threads=None):
-    jobs = [(model, name) for part in ["eval", "test"] for name, cam in graph_names(dataset, part)]
+def prep_eval_graphs(dataset, model, threads=None, parts=["eval", "test"]):
+    jobs = [(model, name) for part in parts for name, cam in graph_names(dataset, part)]
     parallel_run(prep_eval_graph_worker, jobs, threads, "Prepping eval graphs")
 
 def prep_eval_tracks_worker(args):
     model, name, device = args
     ofn = os.path.join("cachedir/tracks", os.path.basename(name))
-    print(ofn)
     if not os.path.exists(ofn):
         graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
         promote_graph(graph)
@@ -167,6 +167,76 @@ def eval_prepped_tracks(dataset, part='eval'):
     print(res_int)
     return res, res_int
 
+def eval_prepped_tracks_csv(dataset, logdir, part='eval'):
+    base = '%s/result_%s_%s' % (logdir, dataset.name, part)
+    os.makedirs(base, exist_ok=True)
+    os.makedirs(base + '_int', exist_ok=True)
+    prev_cam = prev_track_frames = all_tracks = prev_tracks = None
+    entries = list(sorted(graph_names(dataset, part), key=lambda e: (e[1], e[0]))) + [(None, None)]
+    for name, cam in tqdm(entries, 'Evaluating tracks CSV'):
+        if cam != prev_cam:
+            if all_tracks is not None:
+                csv_eval, csv_submit = make_duke_csv(all_tracks, prev_cam)
+                np.savetxt('%s/%s_eval.txt' % (base, prev_cam), csv_eval, delimiter=',', fmt='%d')
+                np.savetxt('%s/%s_submit.txt' % (base, prev_cam), csv_submit, delimiter=',', fmt='%d')
+
+                interpolate_missing_detections(all_tracks)
+                csv_eval, csv_submit = make_duke_csv(all_tracks, prev_cam)
+                np.savetxt('%s_int/%s_eval.txt' % (base, prev_cam), csv_eval, delimiter=',', fmt='%d')
+                np.savetxt('%s_int/%s_submit.txt' % (base, prev_cam), csv_submit, delimiter=',', fmt='%d')
+
+            prev_track_frames = None
+            prev_cam = cam
+        if name is None:
+            break
+
+        tracks_name = os.path.join("cachedir/tracks", os.path.basename(name))
+        tracks = load_pickle(tracks_name)
+        track_frames = defaultdict(list)
+        for i, tr in enumerate(tracks):
+            for det in tr:
+                det.idx = i
+                track_frames[det.frame].append(det)
+
+        if prev_track_frames is not None:
+            if len(track_frames.keys()) and len(prev_track_frames.keys()):
+                overlap = range(min(track_frames.keys()), max(prev_track_frames.keys())+1)
+                counts = np.zeros((len(prev_tracks), len(tracks)))
+                for f in overlap:
+                    for prv in prev_track_frames[f]:
+                        for nxt in track_frames[f]:
+                            if prv.left == nxt.left and prv.right == nxt.right and prv.top == nxt.top and prv.bottom == nxt.bottom:
+                                counts[prv.idx, nxt.idx] += 1
+
+                cost, _, nxt_matches = lapjv(-counts, extend_cost=True)
+                assert len(nxt_matches) == len(tracks)
+                for i in range(len(tracks)):
+                    j = nxt_matches[i]
+                    if counts[j][i] > 0:
+                        prev_tracks[j] += tracks[i]
+                        tracks[i] = prev_tracks[j]
+                    else:
+                        all_tracks.append(tracks[i])
+            else:
+                all_tracks.extend(tracks)
+        else:
+            all_tracks = tracks
+        prev_track_frames = track_frames
+        prev_tracks = tracks
+
+
+def make_duke_csv(all_tracks, prev_cam):
+    csv_eval, csv_submit = [], []
+    for track_id, tr in enumerate(all_tracks):
+        tr.sort(key=lambda d: d.frame)
+        prv = -1
+        for det in tr:
+            if det.frame > prv:
+                csv_eval.append([det.frame, track_id, det.left, det.top, det.width, det.height, -1, -1])
+                csv_submit.append([prev_cam, track_id, det.frame, det.left, det.top, det.width, det.height])
+            prv = det.frame
+    return csv_eval, csv_submit
+
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
@@ -174,4 +244,5 @@ if __name__ == '__main__':
     dataset = Duke('/home/hakan/src/duke')
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)
     # prep_eval_tracks(dataset, "logdir", NNModelGraphresPerConnection())
-    eval_prepped_tracks(dataset)
+    # eval_prepped_tracks(dataset)
+    eval_prepped_tracks_csv(dataset, "cachedir/logdir", "test")

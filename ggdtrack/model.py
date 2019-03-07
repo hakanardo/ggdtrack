@@ -156,6 +156,11 @@ class NNModelGraphresPerConnection(NNModel):
         nn.Module.eval(self)
         self.entry_weight = self.entry_weight_parameter.item()
 
+    def train(self, mode=True):
+        nn.Module.train(self)
+        if mode:
+            del self.entry_weight
+
     @staticmethod
     def detecton_weight_feature(det):
         return (det.confidence, det.max_intra_iou, det.max_intra_ioa)
