@@ -91,7 +91,7 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
 
     if mean_from is not None:
         mean_model = model.__class__()
-        mean_model.load_state_dict(torch.load(mean_from))
+        mean_model.load_state_dict(torch.load(mean_from)['model_state'])
         model.detection_model.mean = mean_model.detection_model.mean
         model.detection_model.std = mean_model.detection_model.std
         model.edge_model.klt_model.mean = mean_model.edge_model.klt_model.mean
@@ -169,15 +169,24 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
 
-def train_frossard(dataset, logdir, model, device=default_torch_device, limit=None, epochs=1000):
+def train_frossard(dataset, logdir, model, mean_from, device=default_torch_device, limit=None, epochs=1000):
     if os.path.exists(logdir):
         rmtree(logdir)
     os.makedirs(logdir)
 
     optimizer = optim.Adam(model.parameters(), 1e-5)
-
     for t in model.parameters():
         torch.nn.init.normal_(t, 0, 1e-3)
+
+    mean_model = model.__class__()
+    mean_model.load_state_dict(torch.load(mean_from)['model_state'])
+    model.detection_model.mean = mean_model.detection_model.mean
+    model.detection_model.std = mean_model.detection_model.std
+    model.edge_model.klt_model.mean = mean_model.edge_model.klt_model.mean
+    model.edge_model.klt_model.std = mean_model.edge_model.klt_model.std
+    model.edge_model.long_model.mean = mean_model.edge_model.long_model.mean
+    model.edge_model.long_model.std = mean_model.edge_model.long_model.std
+    model.to(device)
 
     entries = graph_names(dataset, "train")
     if limit is not None:
@@ -247,8 +256,8 @@ if __name__ == '__main__':
     from ggdtrack.model import NNModelGraphresPerConnection
     from ggdtrack.eval import prep_eval_graphs
 
-    dataset = Duke('/home/hakan/src/duke')
+    dataset = Duke('data')
     # train_graphres_minimal(dataset, "logdir", NNModelGraphresPerConnection())
 
     prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["train"])
-    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), limit=1)
+    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt")

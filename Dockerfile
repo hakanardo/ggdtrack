@@ -4,7 +4,7 @@ FROM floydhub/pytorch:1.0.0-gpu.cuda9cudnn7-py3.39
 RUN apt-get update
 RUN apt-get --yes install libglib2.0-0 libopencv-core2.4v5 libsm6 \
                           libxrender1 libavcodec-dev libswscale-dev \
-                          libglpk-dev \
+                          libglpk-dev zip \
                           && apt-get clean
 
 COPY requirements.txt /workspace/
