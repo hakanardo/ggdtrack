@@ -1,5 +1,6 @@
 import os
 from glob import glob
+from random import shuffle
 from shutil import rmtree
 import time
 import numpy as np
@@ -8,6 +9,7 @@ import torch
 from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from ggdtrack.dataset import ground_truth_tracks
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch, split_track_on_missing_edge
@@ -167,16 +169,25 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
 
-def train_frossard(dataset, logdir, model, device=default_torch_device, limit=None, epochs=10):
+def train_frossard(dataset, logdir, model, device=default_torch_device, limit=None, epochs=1000):
+    if os.path.exists(logdir):
+        rmtree(logdir)
+    os.makedirs(logdir)
+
     optimizer = optim.Adam(model.parameters(), 1e-5)
 
     for t in model.parameters():
         torch.nn.init.normal_(t, 0, 1e-3)
 
-    for epoch in range(1000):
-        entries = graph_names(dataset, "train")
+    entries = graph_names(dataset, "train")
+    if limit is not None:
+        shuffle(entries)
+        entries = entries[:limit]
+
+    for epoch in range(epochs):
+        shuffle(entries)
         epoch_hamming_distance = 0
-        for name, cam in entries:
+        for name, cam in tqdm(entries, "Epoch %s" % epoch):
             scene = dataset.scene(cam)
 
             model.eval()
@@ -216,7 +227,16 @@ def train_frossard(dataset, logdir, model, device=default_torch_device, limit=No
 
             loss.backward()
             optimizer.step()
-        print(epoch_hamming_distance)
+
+        snapp = {
+            'epoch': epoch,
+            'model_state': model.state_dict(),
+            'optimizer_state': optimizer.state_dict(),
+            'loss': loss,
+            'train_hamming': epoch_hamming_distance,
+        }
+        torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
+        print('Hamming:', epoch_hamming_distance)
 
 
     # writer = SummaryWriter(logdir)
@@ -231,4 +251,4 @@ if __name__ == '__main__':
     # train_graphres_minimal(dataset, "logdir", NNModelGraphresPerConnection())
 
     prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["train"])
-    train_frossard(dataset, "logdir", NNModelGraphresPerConnection())
+    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), limit=1)

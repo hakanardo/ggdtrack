@@ -3,6 +3,7 @@
 #     set_start_method('forkserver')
 # import warnings
 # warnings.filterwarnings("ignore")
+import os
 
 import click
 
@@ -38,6 +39,12 @@ def main(datadir, limit, threads):
 
     prep_eval_tracks(dataset, "cachedir/logdir", model, 'test', threads=1)
     eval_prepped_tracks_csv(dataset, "cachedir/logdir", 'test')
+
+    os.system("cat  cachedir/logdir/result_duke_test_int/*_submit.txt > cachedir/logdir/duke.txt")
+    if os.path.exists("cachedir/logdir/duke.zip"):
+        os.unlink("cachedir/logdir/duke.zip")
+    os.system("cd cachedir/logdir; zip duke.zip duke.txt")
+
 
 if __name__ == '__main__':
     main()

@@ -224,7 +224,6 @@ def eval_prepped_tracks_csv(dataset, logdir, part='eval'):
         prev_track_frames = track_frames
         prev_tracks = tracks
 
-
 def make_duke_csv(all_tracks, prev_cam):
     csv_eval, csv_submit = [], []
     for track_id, tr in enumerate(all_tracks):
