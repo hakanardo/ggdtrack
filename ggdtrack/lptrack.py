@@ -6,8 +6,16 @@ from vi3o import view
 import numpy as np
 
 
+def hamming_weight(v, gt):
+    if gt == 0.0:
+        return v
+    elif gt == 1.0:
+        return -1.0 * v  # (1-v), but removing a constant 1 from the objective wont move the location of the maximum
+    else:
+        assert False
 
-def lp_track(graph, connection_batch, detection_weight_features, model, verbose=False):
+
+def lp_track(graph, connection_batch, detection_weight_features, model, verbose=False, add_gt_hamming=False):
     if not graph:
         return []
 
@@ -26,18 +34,20 @@ def lp_track(graph, connection_batch, detection_weight_features, model, verbose=
     for d in graph:
         d.incomming = [p.outgoing[p.next.index(d)] for p in d.prev]
 
-    if len(connection_batch.klt_data) > 0:
-        connection_weights = model.connection_batch_forward(connection_batch)
-    else:
-        connection_weights = None
+    connection_weights = model.connection_batch_forward(connection_batch)
     connection_weight = 0
     for d in graph:
         lp.add_constraint(sum(d.outgoing) + d.exit - d.present == 0)
         lp.add_constraint(sum(d.incomming) + d.entry - d.present == 0)
         connection_weight += sum(connection_weights[i].item() * v for v, i in zip(d.outgoing, d.weight_index))
+        if add_gt_hamming:
+            connection_weight += sum(hamming_weight(v, gt) for v, gt in zip(d.outgoing, d.gt_next))
+
 
     detection_weights = model.detection_model(detection_weight_features)
     detection_weight = sum(d.present * detection_weights[d.index] + model.entry_weight * d.entry for d in graph)
+    if add_gt_hamming:
+        detection_weight += sum(hamming_weight(d.present, d.gt_present) + hamming_weight(d.entry, d.gt_entry) for d in graph)
     lp.objective = connection_weight + detection_weight
 
     m = lp.maximize()

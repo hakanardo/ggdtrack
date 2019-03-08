@@ -142,6 +142,8 @@ class NNModelGraphresPerConnection(NNModel):
 
 
     def connection_batch_forward(self, batch):
+        if len(batch.klt_data) == 0:
+            return None
         klt_scores = self.edge_model.klt_model(batch.klt_data)
         klt_scores, klt_n = idx_mean(klt_scores, batch.klt_idx, 64)
 
@@ -158,7 +160,7 @@ class NNModelGraphresPerConnection(NNModel):
 
     def train(self, mode=True):
         nn.Module.train(self)
-        if mode:
+        if mode and hasattr(self, 'entry_weight'):
             del self.entry_weight
 
     @staticmethod

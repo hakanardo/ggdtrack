@@ -77,7 +77,6 @@ class Duke(Dataset):
             yield Detection(frame, left, top, right, bottom, confidence, ind)
 
     def ground_truth_detections(self, camera):
-        print(self.path + '/ground_truth/trainval.mat')
         gt = io.loadmat(self.path + '/ground_truth/trainval.mat')['trainData']
         gt = gt[gt[:,2].argsort()]
         for cam, track_id, frame, left, top, width, height, worldX, worldY, feetX, feetyY in gt:

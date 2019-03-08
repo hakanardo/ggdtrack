@@ -9,8 +9,11 @@ from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
 
-from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
-from ggdtrack.utils import default_torch_device
+from ggdtrack.dataset import ground_truth_tracks
+from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch, split_track_on_missing_edge
+from ggdtrack.klt_det_connect import graph_names
+from ggdtrack.lptrack import lp_track
+from ggdtrack.utils import default_torch_device, load_graph, promote_graph
 
 if True: # Patch pytorch
     string_classes = torch._six.string_classes
@@ -164,7 +167,68 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
 
+def train_frossard(dataset, logdir, model, device=default_torch_device, limit=None, epochs=10):
+    optimizer = optim.Adam(model.parameters(), 1e-5)
+
+    for t in model.parameters():
+        torch.nn.init.normal_(t, 0, 1e-3)
+
+    for epoch in range(1000):
+        entries = graph_names(dataset, "train")
+        epoch_hamming_distance = 0
+        for name, cam in entries:
+            scene = dataset.scene(cam)
+
+            model.eval()
+            graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
+            promote_graph(graph)
+            detection_weight_features = detection_weight_features.to(device)
+            connection_batch = connection_batch.to(device)
+
+
+            gt_tracks, graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+            for det in graph:
+                det.gt_entry = 0.0
+                det.gt_present = 0.0 if det.track_id is None else 1.0
+                det.gt_next = [0.0 if det.track_id is None or det.track_id != nxt.track_id else 1.0
+                               for nxt in det.next]
+            for tr in gt_tracks:
+                tr[0].gt_entry = 1.0
+
+            lp_track(graph, connection_batch, detection_weight_features, model) #, add_gt_hamming=True)
+
+            model.train()
+            optimizer.zero_grad()
+
+            hamming_distance = loss = 0
+            connection_weights = model.connection_batch_forward(connection_batch)
+            detection_weights = model.detection_model(detection_weight_features)
+            for det in graph:
+                assert len(det.next) == len(det.outgoing)
+                loss += (det.present.value - det.gt_present) * detection_weights[det.index]
+                loss += (det.entry.value - det.gt_entry) * model.entry_weight_parameter
+                loss += sum(connection_weights[i] * (v.value - gt)
+                            for v, i, gt in zip(det.outgoing, det.weight_index, det.gt_next))
+                hamming_distance += det.present.value != det.gt_present
+                hamming_distance += det.entry.value != det.gt_entry
+                hamming_distance += sum(v.value != gt for v, gt in zip(det.outgoing, det.gt_next))
+            epoch_hamming_distance += hamming_distance
+
+            loss.backward()
+            optimizer.step()
+        print(epoch_hamming_distance)
+
+
+    # writer = SummaryWriter(logdir)
+
+
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    train_graphres_minimal(Duke('/home/hakan/src/duke'), "logdir", NNModelGraphresPerConnection())
+    from ggdtrack.eval import prep_eval_graphs
+
+    dataset = Duke('/home/hakan/src/duke')
+    # train_graphres_minimal(dataset, "logdir", NNModelGraphresPerConnection())
+
+    prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["train"])
+    train_frossard(dataset, "logdir", NNModelGraphresPerConnection())
