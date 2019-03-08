@@ -14,7 +14,7 @@ from tqdm import tqdm
 from ggdtrack.dataset import ground_truth_tracks
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch, split_track_on_missing_edge
 from ggdtrack.klt_det_connect import graph_names
-from ggdtrack.lptrack import lp_track
+from ggdtrack.lptrack import lp_track, show_tracks, interpolate_missing_detections
 from ggdtrack.utils import default_torch_device, load_graph, promote_graph
 
 if True: # Patch pytorch
@@ -169,34 +169,46 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
 
-def train_frossard(dataset, logdir, model, mean_from, device=default_torch_device, limit=None, epochs=1000):
-    if os.path.exists(logdir):
-        rmtree(logdir)
-    os.makedirs(logdir)
+def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_device, limit=None, epochs=1000, resume_from=None):
+
+    if mean_from is None and resume_from is None:
+        raise NotImplementedError
 
     optimizer = optim.Adam(model.parameters(), 1e-5)
-    for t in model.parameters():
-        torch.nn.init.normal_(t, 0, 1e-3)
 
-    mean_model = model.__class__()
-    mean_model.load_state_dict(torch.load(mean_from)['model_state'])
-    model.detection_model.mean = mean_model.detection_model.mean
-    model.detection_model.std = mean_model.detection_model.std
-    model.edge_model.klt_model.mean = mean_model.edge_model.klt_model.mean
-    model.edge_model.klt_model.std = mean_model.edge_model.klt_model.std
-    model.edge_model.long_model.mean = mean_model.edge_model.long_model.mean
-    model.edge_model.long_model.std = mean_model.edge_model.long_model.std
-    model.to(device)
+    if resume_from is not None:
+        fn = sorted(glob("%s/snapshot_???.pyt" % (resume_from)))[-1]
+        snapshot = torch.load(fn)
+        model.load_state_dict(snapshot['model_state'])
+        optimizer.load_state_dict(snapshot['optimizer_state'])
+        start_epoch = snapshot['epoch'] + 1
+    else:
+        if os.path.exists(logdir):
+            rmtree(logdir)
+        os.makedirs(logdir)
+        start_epoch = 0
+        for t in model.parameters():
+            torch.nn.init.normal_(t, 0, 1e-3)
+
+        mean_model = model.__class__()
+        mean_model.load_state_dict(torch.load(mean_from)['model_state'])
+        model.detection_model.mean = mean_model.detection_model.mean
+        model.detection_model.std = mean_model.detection_model.std
+        model.edge_model.klt_model.mean = mean_model.edge_model.klt_model.mean
+        model.edge_model.klt_model.std = mean_model.edge_model.klt_model.std
+        model.edge_model.long_model.mean = mean_model.edge_model.long_model.mean
+        model.edge_model.long_model.std = mean_model.edge_model.long_model.std
+        model.to(device)
 
     entries = graph_names(dataset, "train")
     if limit is not None:
         shuffle(entries)
         entries = entries[:limit]
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, start_epoch + epochs):
         shuffle(entries)
         epoch_hamming_distance = 0
-        for name, cam in tqdm(entries, "Epoch %s" % epoch):
+        for name, cam in tqdm(entries, "Epoch %s" % epoch, disable=True):
             scene = dataset.scene(cam)
 
             model.eval()
@@ -215,7 +227,9 @@ def train_frossard(dataset, logdir, model, mean_from, device=default_torch_devic
             for tr in gt_tracks:
                 tr[0].gt_entry = 1.0
 
-            lp_track(graph, connection_batch, detection_weight_features, model) #, add_gt_hamming=True)
+            tracks = lp_track(graph, connection_batch, detection_weight_features, model) #, add_gt_hamming=True)
+            # interpolate_missing_detections(tracks)
+            # show_tracks(scene, tracks)
 
             model.train()
             optimizer.zero_grad()
@@ -232,6 +246,7 @@ def train_frossard(dataset, logdir, model, mean_from, device=default_torch_devic
                 hamming_distance += det.present.value != det.gt_present
                 hamming_distance += det.entry.value != det.gt_entry
                 hamming_distance += sum(v.value != gt for v, gt in zip(det.outgoing, det.gt_next))
+            # print(hamming_distance)
             epoch_hamming_distance += hamming_distance
 
             loss.backward()
@@ -260,4 +275,5 @@ if __name__ == '__main__':
     # train_graphres_minimal(dataset, "logdir", NNModelGraphresPerConnection())
 
     prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["train"])
-    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt")
+    # train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt")
+    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), resume_from="cachedir/logdir")
