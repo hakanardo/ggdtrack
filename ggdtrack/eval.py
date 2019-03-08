@@ -31,7 +31,7 @@ def prep_eval_graph_worker(args):
         return ofn
     graph = load_graph(graph_name)
 
-    with TemporaryDirectory(prefix=os.path.join(os.getcwd(), "cachedir")) as tmpdir:
+    with TemporaryDirectory(dir="cachedir", prefix="tmp_eval", suffix="_mmaps") as tmpdir:
         detection_weight_features = []
         edge_weight_features_klt = VarHMatrixList(tmpdir, 'klt_data', 'klt_index', model.klt_feature_length)
         edge_weight_features_long = VarHMatrixList(tmpdir, 'long_data', 'long_index', model.long_feature_length)
@@ -58,6 +58,7 @@ def prep_eval_graph_worker(args):
                                            torch.tensor(edge_weight_features_klt.data),
                                            torch.tensor(edge_weight_features_long.index.data),
                                            torch.tensor(edge_weight_features_long.data))
+
     demote_graph(graph)
     save_torch((graph, detection_weight_features, connection_batch), ofn)
     return ofn
