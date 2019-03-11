@@ -12,3 +12,4 @@
 -  9 Loss:  0.000227, Train Accuracy: 98.043642 %, Eval Accuracy: 98.250681 %
 - Result interpolated  IDF1    IDP    IDR     MOTA  MOTP num_frames
 - OVERALL              82.2%  86.6%  78.1%    75.6% 0.250     112897
+

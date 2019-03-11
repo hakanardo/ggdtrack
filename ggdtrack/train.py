@@ -71,10 +71,11 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         optimizer.load_state_dict(snapshot['optimizer_state'])
         start_epoch = snapshot['epoch'] + 1
     else:
-        if os.path.exists(logdir):
-            rmtree(logdir)
-        os.makedirs(logdir)
         start_epoch = 0
+
+    if os.path.exists(logdir) and logdir != resume:
+        rmtree(logdir)
+    os.makedirs(logdir)
 
 
     train_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_train" % (dataset.name, model.feature_name), model, "r", lazy=True)
@@ -174,6 +175,7 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
     if mean_from is None and resume_from is None:
         raise NotImplementedError
 
+    model.to(device)
     optimizer = optim.Adam(model.parameters(), 1e-5)
 
     if resume_from is not None:
@@ -183,10 +185,8 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
         model.load_state_dict(snapshot['model_state'])
         optimizer.load_state_dict(snapshot['optimizer_state'])
         start_epoch = snapshot['epoch'] + 1
+        model.to(device)
     else:
-        if os.path.exists(logdir):
-            rmtree(logdir)
-        os.makedirs(logdir)
         start_epoch = 0
         for t in model.parameters():
             torch.nn.init.normal_(t, 0, 1e-3)
@@ -200,6 +200,10 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
         model.edge_model.long_model.mean = mean_model.edge_model.long_model.mean
         model.edge_model.long_model.std = mean_model.edge_model.long_model.std
         model.to(device)
+
+    if os.path.exists(logdir) and logdir != resume_from:
+        rmtree(logdir)
+    os.makedirs(logdir)
 
     entries = graph_names(dataset, "train")
     if limit is not None:
