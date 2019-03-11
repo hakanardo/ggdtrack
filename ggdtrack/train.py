@@ -178,6 +178,7 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
 
     if resume_from is not None:
         fn = sorted(glob("%s/snapshot_???.pyt" % (resume_from)))[-1]
+        print("Resuming from", fn)
         snapshot = torch.load(fn)
         model.load_state_dict(snapshot['model_state'])
         optimizer.load_state_dict(snapshot['optimizer_state'])
@@ -217,15 +218,17 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
             detection_weight_features = detection_weight_features.to(device)
             connection_batch = connection_batch.to(device)
 
-
             gt_tracks, graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
             for det in graph:
                 det.gt_entry = 0.0
                 det.gt_present = 0.0 if det.track_id is None else 1.0
-                det.gt_next = [0.0 if det.track_id is None or det.track_id != nxt.track_id else 1.0
-                               for nxt in det.next]
+                det.gt_next = [0.0] * len(det.next)
             for tr in gt_tracks:
                 tr[0].gt_entry = 1.0
+                prv = None
+                for det in tr:
+                    if prv is not None:
+                        prv.gt_next[prv.next.index(det)] = 1.0
 
             tracks = lp_track(graph, connection_batch, detection_weight_features, model) #, add_gt_hamming=True)
             # interpolate_missing_detections(tracks)
