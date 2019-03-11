@@ -330,7 +330,10 @@ def split_track_on_missing_edge(gt_tracks):
         prv = None
         for det in tr:
             if prv is not None:
-                if not prv.next_weight_data[det]:
+                if hasattr(prv, 'next_weight_data'):
+                    if not prv.next_weight_data[det]:
+                        track_id += 1
+                elif det not in prv.next:
                     track_id += 1
             tracks[track_id].append(det)
             prv = det

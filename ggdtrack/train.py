@@ -1,6 +1,7 @@
 import os
+from collections import defaultdict
 from glob import glob
-from random import shuffle
+from random import shuffle, seed
 from shutil import rmtree
 import time
 import numpy as np
@@ -222,7 +223,10 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
             detection_weight_features = detection_weight_features.to(device)
             connection_batch = connection_batch.to(device)
 
-            gt_tracks, graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+
+            gt_tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+            gt_tracks = split_track_on_missing_edge(gt_tracks)
+
             for det in graph:
                 det.gt_entry = 0.0
                 det.gt_present = 0.0 if det.track_id is None else 1.0
@@ -233,15 +237,16 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
                 for det in tr:
                     if prv is not None:
                         prv.gt_next[prv.next.index(det)] = 1.0
+                    prv = det
 
-            tracks = lp_track(graph, connection_batch, detection_weight_features, model) #, add_gt_hamming=True)
+            tracks = lp_track(graph, connection_batch, detection_weight_features, model, add_gt_hamming=True)
             # interpolate_missing_detections(tracks)
-            # show_tracks(scene, tracks)
+            # show_tracks(scene, tracks, gt_graph_frames)
 
             model.train()
             optimizer.zero_grad()
 
-            hamming_distance = loss = 0
+            hamming_distance_present = hamming_distance_entry = hamming_distance_connect = loss = 0
             connection_weights = model.connection_batch_forward(connection_batch)
             detection_weights = model.detection_model(detection_weight_features)
             for det in graph:
@@ -250,12 +255,12 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
                 loss += (det.entry.value - det.gt_entry) * model.entry_weight_parameter
                 loss += sum(connection_weights[i] * (v.value - gt)
                             for v, i, gt in zip(det.outgoing, det.weight_index, det.gt_next))
-                hamming_distance += det.present.value != det.gt_present
-                hamming_distance += det.entry.value != det.gt_entry
-                hamming_distance += sum(v.value != gt for v, gt in zip(det.outgoing, det.gt_next))
-            # print(hamming_distance)
-            epoch_hamming_distance += hamming_distance
+                hamming_distance_present += det.present.value != det.gt_present
+                hamming_distance_entry += det.entry.value != det.gt_entry
+                hamming_distance_connect += sum(v.value != gt for v, gt in zip(det.outgoing, det.gt_next))
+            epoch_hamming_distance += hamming_distance_present + hamming_distance_entry + hamming_distance_connect
 
+            # print(loss.item(), hamming_distance_present, hamming_distance_entry, hamming_distance_connect)
             loss.backward()
             optimizer.step()
 
@@ -267,7 +272,7 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
             'train_hamming': epoch_hamming_distance,
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
-        print('Hamming:', epoch_hamming_distance)
+        print('%3d Hamming:' % epoch, epoch_hamming_distance)
 
 
     # writer = SummaryWriter(logdir)
@@ -281,6 +286,6 @@ if __name__ == '__main__':
     dataset = Duke('data')
     # train_graphres_minimal(dataset, "logdir", NNModelGraphresPerConnection())
 
-    prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["train"])
     # train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt")
-    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), resume_from="cachedir/logdir")
+    seed(45)
+    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), resume_from="cachedir/logdir", limit=1)

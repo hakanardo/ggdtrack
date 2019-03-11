@@ -97,13 +97,17 @@ def show_tracks(scene, tracks, frame_dets=()):
             if tr[0].frame <= f <= tr[-1].frame:
                 det = tr[bisect([det.frame for det in tr], f)-1]
                 assert det.frame == f # Did you interpolate_missing_detections(tracks)?
-                det.draw(img, label=tr_id)
+                if hasattr(det, 'track_id'):
+                    label = '%s:%s' % (tr_id, det.track_id)
+                else:
+                    label = tr_id
+                det.draw(img, label=label)
 
         cv2.polylines(img, np.array([scene.roi()]), True, (0,0,0), thickness=3)
         cv2.polylines(img, np.array([scene.roi()]), True, (255,255,255), thickness=1)
 
 
-        view(img)
+        view(img, pause=True)
         # imwrite(img, "dbg/%.8d.jpg" % f)
 
 if __name__ == '__main__':

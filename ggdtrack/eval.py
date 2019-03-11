@@ -70,16 +70,17 @@ def prep_eval_graphs(dataset, model, threads=None, parts=["eval", "test"]):
 def prep_eval_tracks_worker(args):
     model, name, device = args
     ofn = os.path.join("cachedir/tracks", os.path.basename(name))
-    if not os.path.exists(ofn):
-        graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
-        promote_graph(graph)
-        detection_weight_features = detection_weight_features.to(device)
-        connection_batch = connection_batch.to(device)
-        tracks = lp_track(graph, connection_batch, detection_weight_features, model)
-        for tr in tracks:
-            for det in tr:
-                det.__dict__ = {}
-        save_pickle(tracks, ofn)
+
+    graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
+    promote_graph(graph)
+    detection_weight_features = detection_weight_features.to(device)
+    connection_batch = connection_batch.to(device)
+    tracks = lp_track(graph, connection_batch, detection_weight_features, model)
+    for tr in tracks:
+        for det in tr:
+            det.__dict__ = {}
+    save_pickle(tracks, ofn)
+
     return ofn
 
 def prep_eval_tracks(dataset, logdir, model, part='eval', device=default_torch_device, threads=None, limit=None):
