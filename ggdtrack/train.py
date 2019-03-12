@@ -15,8 +15,8 @@ from tqdm import tqdm
 from ggdtrack.dataset import ground_truth_tracks
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch, split_track_on_missing_edge
 from ggdtrack.klt_det_connect import graph_names
-from ggdtrack.lptrack import lp_track, show_tracks, interpolate_missing_detections
-from ggdtrack.utils import default_torch_device, load_graph, promote_graph
+from ggdtrack.lptrack import lp_track, show_tracks, interpolate_missing_detections, lp_track_weights
+from ggdtrack.utils import default_torch_device, load_graph, promote_graph, demote_graph
 
 if True: # Patch pytorch
     string_classes = torch._six.string_classes
@@ -74,9 +74,10 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
     else:
         start_epoch = 0
 
-    if os.path.exists(logdir) and logdir != resume:
-        rmtree(logdir)
-    os.makedirs(logdir)
+    if logdir != resume:
+        if os.path.exists(logdir):
+            rmtree(logdir)
+        os.makedirs(logdir)
 
 
     train_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_train" % (dataset.name, model.feature_name), model, "r", lazy=True)
@@ -171,20 +172,61 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
 
+class EvalGtGraphs:
+    def __init__(self, dataset, entries, suffix):
+        self.dataset = dataset
+        self.entries = entries
+        self.suffix = suffix
+
+    def __len__(self):
+        return len(self.entries)
+
+    def __getitem__(self, item):
+        name, cam = self.entries[item]
+        scene = self.dataset.scene(cam)
+
+        graph, detection_weight_features, connection_batch = torch.load(name + self.suffix)
+        promote_graph(graph)
+
+        gt_tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+        gt_tracks = split_track_on_missing_edge(gt_tracks)
+
+        for det in graph:
+            det.gt_entry = 0.0
+            det.gt_present = 0.0 if det.track_id is None else 1.0
+            det.gt_next = [0.0] * len(det.next)
+        for tr in gt_tracks:
+            tr[0].gt_entry = 1.0
+            prv = None
+            for det in tr:
+                if prv is not None:
+                    prv.gt_next[prv.next.index(det)] = 1.0
+                prv = det
+
+        demote_graph(graph)
+        return graph, detection_weight_features, connection_batch
+
+def single_example_passthrough(batch):
+    assert len(batch) == 1
+    return batch[0]
+
 def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_device, limit=None, epochs=1000, resume_from=None):
 
     if mean_from is None and resume_from is None:
         raise NotImplementedError
 
     model.to(device)
-    optimizer = optim.Adam(model.parameters(), 1e-5)
+    optimizer = optim.Adam(model.parameters(), 1e-3)
 
     if resume_from is not None:
-        fn = sorted(glob("%s/snapshot_???.pyt" % (resume_from)))[-1]
+        if os.path.isdir(resume_from):
+            fn = sorted(glob("%s/snapshot_???.pyt" % (resume_from)))[-1]
+        else:
+            fn = resume_from
         print("Resuming from", fn)
         snapshot = torch.load(fn)
         model.load_state_dict(snapshot['model_state'])
-        optimizer.load_state_dict(snapshot['optimizer_state'])
+        # optimizer.load_state_dict(snapshot['optimizer_state'])
         start_epoch = snapshot['epoch'] + 1
         model.to(device)
     else:
@@ -202,44 +244,32 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
         model.edge_model.long_model.std = mean_model.edge_model.long_model.std
         model.to(device)
 
-    if os.path.exists(logdir) and logdir != resume_from:
-        rmtree(logdir)
-    os.makedirs(logdir)
+    if logdir != resume_from:
+        if os.path.exists(logdir):
+            rmtree(logdir)
+        os.makedirs(logdir)
 
     entries = graph_names(dataset, "train")
     if limit is not None:
         shuffle(entries)
         entries = entries[:limit]
 
+    train_data = EvalGtGraphs(dataset, entries, '-%s-eval_graph' % model.feature_name)
+    train_loader = DataLoader(train_data, 1, True, collate_fn=single_example_passthrough, num_workers=6)
+
     for epoch in range(start_epoch, start_epoch + epochs):
         shuffle(entries)
         epoch_hamming_distance = 0
-        for name, cam in tqdm(entries, "Epoch %s" % epoch, disable=True):
-            scene = dataset.scene(cam)
+        for graph, detection_weight_features, connection_batch in tqdm(train_loader, "Epoch %s" % epoch, disable=True):
+            connection_batch = connection_batch.to(device)
+            detection_weight_features = detection_weight_features.to(device)
+            promote_graph(graph)
 
             model.eval()
-            graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
-            promote_graph(graph)
-            detection_weight_features = detection_weight_features.to(device)
-            connection_batch = connection_batch.to(device)
-
-
-            gt_tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
-            gt_tracks = split_track_on_missing_edge(gt_tracks)
-
-            for det in graph:
-                det.gt_entry = 0.0
-                det.gt_present = 0.0 if det.track_id is None else 1.0
-                det.gt_next = [0.0] * len(det.next)
-            for tr in gt_tracks:
-                tr[0].gt_entry = 1.0
-                prv = None
-                for det in tr:
-                    if prv is not None:
-                        prv.gt_next[prv.next.index(det)] = 1.0
-                    prv = det
-
-            tracks = lp_track(graph, connection_batch, detection_weight_features, model, add_gt_hamming=True)
+            connection_weights = model.connection_batch_forward(connection_batch)
+            detection_weights = model.detection_model(detection_weight_features)
+            tracks = lp_track_weights(graph, connection_weights, detection_weights, model.entry_weight, add_gt_hamming=True)
+            # tracks = lp_track(graph, connection_batch, detection_weight_features, model, add_gt_hamming=True)
             # interpolate_missing_detections(tracks)
             # show_tracks(scene, tracks, gt_graph_frames)
 
@@ -262,6 +292,7 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
 
             # print(loss.item(), hamming_distance_present, hamming_distance_entry, hamming_distance_connect)
             loss.backward()
+            # print(model.entry_weight_parameter, model.entry_weight_parameter.grad, hamming_distance_entry)
             optimizer.step()
 
         snapp = {
@@ -287,5 +318,8 @@ if __name__ == '__main__':
     # train_graphres_minimal(dataset, "logdir", NNModelGraphresPerConnection())
 
     # train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt")
-    seed(45)
-    train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), resume_from="cachedir/logdir", limit=1)
+    seed(42)
+    # train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), resume_from="cachedir/logdir_fossard", limit=1)
+
+    # train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt", limit=1)
+    train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), resume_from="cachedir/logdir/snapshot_009.pyt", limit=1)
