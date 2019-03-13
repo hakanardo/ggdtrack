@@ -302,7 +302,8 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
         demote_graph(graph)
         return graph, connection_batch, detection_weight_features
 
-    lp_tracker_pool = WorkerPool(threads, worker)
+    # lp_tracker_pool = WorkerPool(threads, worker)
+    lp_tracker_pool = None
 
     epoch_hamming_distance = batch_count = 0
     epoch = start_epoch
@@ -317,12 +318,20 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
 
             # promote_graph(graph)
             # tracks = lp_track_weights(graph, connection_weights, detection_weights, model.entry_weight, add_gt_hamming=True)
-            lp_tracker_pool.put((graph, connection_weights.detach().cpu(), detection_weights.detach().cpu(), model.entry_weight, connection_batch, detection_weight_features))
+            if lp_tracker_pool is not None:
+                lp_tracker_pool.put((graph, connection_weights.detach().cpu(), detection_weights.detach().cpu(), model.entry_weight, connection_batch, detection_weight_features))
+            else:
+                promote_graph(graph)
+                lp_track_weights(graph, connection_weights, detection_weights, model.entry_weight, add_gt_hamming=True)
+
             while True:
-                try:
-                    graph, connection_batch, detection_weight_features = lp_tracker_pool.get(block=False)
-                except Empty:
-                    break
+                if lp_tracker_pool is not None:
+                    try:
+                        graph, connection_batch, detection_weight_features = lp_tracker_pool.get(block=False)
+                    except Empty:
+                        break
+                    promote_graph(graph)
+
 
                 if batch_count >= len(train_data):
                     snapp = {
@@ -339,8 +348,6 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
                         return
                     continue
                 batch_count += 1
-
-                promote_graph(graph)
 
                 # interpolate_missing_detections(tracks)
                 # show_tracks(scene, tracks, gt_graph_frames)
@@ -367,6 +374,9 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
                 # print(model.entry_weight_parameter, model.entry_weight_parameter.grad, hamming_distance_entry)
                 optimizer.step()
 
+                if lp_tracker_pool is None:
+                    break
+
     # writer = SummaryWriter(logdir)
 
 
@@ -383,6 +393,7 @@ if __name__ == '__main__':
     seed(42)
     # train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), resume_from="cachedir/logdir_fossard", limit=1)
 
-    train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt", limit=10)
+    train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt", limit=1)
     # train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), resume_from="cachedir/logdir/snapshot_009.pyt", epochs=10)
     print(time.time() - t0)
+

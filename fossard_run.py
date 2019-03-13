@@ -29,5 +29,9 @@ def main(datadir):
     prep_eval_tracks(dataset, "cachedir/logdir_fossard", model, 'eval', threads=1)
     res, res_int = eval_prepped_tracks(dataset, 'eval')
 
+    open("cachedir/logdir_fossard/eval_results.txt", "w").write(res)
+    open("cachedir/logdir_fossard/eval_results_int.txt", "w").write(res_int)
+
+
 if __name__ == '__main__':
     main()
