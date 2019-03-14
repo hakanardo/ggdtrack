@@ -252,7 +252,8 @@ class WorkerPool:
     def put(self, work, block=True, timeout=None):
         self.input_queue.put(work, block, timeout)
 
-def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_device, limit=None, epochs=1000, resume_from=None):
+def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_device, limit=None, epochs=1000,
+                   resume_from=None, save_every=None):
 
     if mean_from is None and resume_from is None:
         raise NotImplementedError
@@ -267,9 +268,13 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
             fn = resume_from
         print("Resuming from", fn)
         snapshot = torch.load(fn)
-        model.load_state_dict(snapshot['model_state'])
-        # optimizer.load_state_dict(snapshot['optimizer_state'])
-        start_epoch = snapshot['epoch'] + 1
+        if isinstance(snapshot, dict) and 'model_state' in snapshot:
+            model.load_state_dict(snapshot['model_state'])
+            # optimizer.load_state_dict(snapshot['optimizer_state'])
+            start_epoch = snapshot['epoch'] + 1
+        else:
+            model.load_state_dict(snapshot)
+            start_epoch = 0
         model.to(device)
     else:
         start_epoch = 0
@@ -311,6 +316,8 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
     # lp_tracker_pool = WorkerPool(threads, worker)
     lp_tracker_pool = None
 
+    save_count = 0
+    last_save = time.time()
     epoch_hamming_distance = batch_count = 0
     epoch = start_epoch
     while True:
@@ -354,6 +361,12 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
                         return
                     continue
                 batch_count += 1
+
+                if save_every and time.time() - last_save > save_every:
+                    last_save = time.time()
+                    torch.save(model.state_dict(), os.path.join(logdir, "model_%.4d.pyt" % save_count))
+                    save_count += 1
+
 
                 # interpolate_missing_detections(tracks)
                 # show_tracks(scene, tracks, gt_graph_frames)
