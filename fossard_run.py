@@ -23,8 +23,8 @@ def main(datadir):
     model = NNModelGraphresPerConnection()
 
     prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["train"])
-    # train_frossard(dataset, "cachedir/logdir_fossard", model, resume_from="cachedir/logdir/model_0000.pyt", epochs=10)
-    train_frossard(dataset, "cachedir/logdir_fossard", model, mean_from="cachedir/logdir/snapshot_009.pyt", epochs=1000)
+    # train_frossard(dataset, "cachedir/logdir_fossard", model, resume_from="cachedir/logdir/model_0001.pyt", epochs=10)
+    train_frossard(dataset, "cachedir/logdir_fossard", model, resume_from="cachedir/logdir/snapshot_009.pyt", save_every=15*60, epochs=1000)
 
     prep_eval_tracks(dataset, "cachedir/logdir_fossard", model, 'eval', threads=1)
     res, res_int = eval_prepped_tracks(dataset, 'eval')

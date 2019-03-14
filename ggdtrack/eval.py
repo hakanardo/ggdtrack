@@ -4,6 +4,7 @@ from collections import namedtuple
 from glob import glob
 from random import shuffle
 from tempfile import TemporaryDirectory
+from time import sleep
 
 import motmetrics
 import torch
@@ -11,13 +12,16 @@ import numpy as np
 from lap._lapjv import lapjv
 from shapely.geometry import Point
 from shapely.geometry import Polygon
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from ggdtrack.dataset import ground_truth_tracks
+from ggdtrack.graph_diff import split_track_on_missing_edge
 from ggdtrack.klt_det_connect import graph_names
-from ggdtrack.lptrack import lp_track, interpolate_missing_detections
+from ggdtrack.lptrack import lp_track, interpolate_missing_detections, lp_track_weights
 from ggdtrack.mmap_array import VarHMatrixList
 from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle, parallel_run, \
-    load_graph, demote_graph, promote_graph
+    load_graph, demote_graph, promote_graph, single_example_passthrough, WorkerPool
 
 
 class ConnectionBatch(namedtuple('ConnectionBatch', ['klt_idx', 'klt_data', 'long_idx', 'long_data'])):
@@ -239,6 +243,86 @@ def make_duke_csv(all_tracks, prev_cam):
             prv = det.frame
     return csv_eval, csv_submit
 
+class EvalGtGraphs:
+    def __init__(self, dataset, entries, suffix):
+        self.dataset = dataset
+        self.entries = entries
+        self.suffix = suffix
+
+    def __len__(self):
+        return len(self.entries)
+
+    def __getitem__(self, item):
+        name, cam = self.entries[item]
+        scene = self.dataset.scene(cam)
+
+        graph, detection_weight_features, connection_batch = torch.load(name + self.suffix)
+        promote_graph(graph)
+
+        gt_tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+        gt_tracks = split_track_on_missing_edge(gt_tracks)
+
+        for det in graph:
+            det.gt_entry = 0.0
+            det.gt_present = 0.0 if det.track_id is None else 1.0
+            det.gt_next = [0.0] * len(det.next)
+        for tr in gt_tracks:
+            tr[0].gt_entry = 1.0
+            prv = None
+            for det in tr:
+                if prv is not None:
+                    prv.gt_next[prv.next.index(det)] = 1.0
+                prv = det
+
+        demote_graph(graph)
+        return graph, detection_weight_features, connection_batch
+
+def eval_hamming_worker(work):
+    graph, connection_weights, detection_weights, entry_weight = work
+    promote_graph(graph)
+    lp_track_weights(graph, connection_weights, detection_weights, entry_weight, add_gt_hamming=True)
+
+    hamming = 0
+    for det in graph:
+        assert len(det.next) == len(det.outgoing)
+        hamming += det.present.value != det.gt_present
+        hamming += det.entry.value != det.gt_entry
+        hamming += sum(v.value != gt for v, gt in zip(det.outgoing, det.gt_next))
+    return hamming
+eval_hamming_worker.pool = None
+
+def eval_hamming(dataset, logdir, model, device=default_torch_device):
+    if logdir is not None:
+        if os.path.isfile(logdir):
+            fn = logdir
+        else:
+            fn = sorted(glob("%s/snapshot_???.pyt" % logdir))[-1]
+        model.load_state_dict(torch.load(fn)['model_state'])
+    model.eval()
+    model.to(device)
+
+    threads = torch.multiprocessing.cpu_count() - 2
+    entries = graph_names(dataset, "eval")
+    train_data = EvalGtGraphs(dataset, entries, '-%s-eval_graph' % model.feature_name)
+    train_loader = DataLoader(train_data, 1, True, collate_fn=single_example_passthrough, num_workers=threads)
+
+
+    if eval_hamming_worker.pool is None:
+        eval_hamming_worker.pool = WorkerPool(threads, eval_hamming_worker, output_queue_len=None)
+
+
+    model.eval()
+    hamming = 0
+    for graph, detection_weight_features, connection_batch in train_loader:
+        connection_weights = model.connection_batch_forward(connection_batch.to(device))
+        detection_weights = model.detection_model(detection_weight_features.to(device))
+        eval_hamming_worker.pool.put((graph, connection_weights.detach().cpu(), detection_weights.detach().cpu(), model.entry_weight))
+        # hamming += worker((graph, connection_weights.detach().cpu(), detection_weights.detach().cpu(), model.entry_weight))
+
+    for _ in range(len(train_data)):
+        hamming += eval_hamming_worker.pool.get()
+    return hamming
+
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
@@ -247,4 +331,6 @@ if __name__ == '__main__':
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)
     # prep_eval_tracks(dataset, "logdir", NNModelGraphresPerConnection())
     # eval_prepped_tracks(dataset)
-    eval_prepped_tracks_csv(dataset, "cachedir/logdir", "test")
+    # eval_prepped_tracks_csv(dataset, "cachedir/logdir", "test")
+    # prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["eval"])
+    print(eval_hamming(dataset, "cachedir/logdir", NNModelGraphresPerConnection()))

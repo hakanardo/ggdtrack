@@ -122,3 +122,41 @@ def download_file(url, dest_dir):
                     fd.write(buffer)
                     pbar.update(len(buffer))
 
+class WorkerPoolDoneWork: pass
+
+class WorkerPool:
+    def __init__(self, num_workers, worker_fn, output_queue_len=None):
+        if output_queue_len is None:
+            output_queue_len = 2 * num_workers + 2
+        self.input_queue = torch.multiprocessing.Queue(num_workers + 1)
+        self.output_queue = torch.multiprocessing.Queue(output_queue_len)
+        self.workers = []
+        self.worker_fn = worker_fn
+
+        for i in range(num_workers):
+            w = torch.multiprocessing.Process(target=self.worker_loop, daemon=True)
+            self.workers.append(w)
+            w.start()
+
+    def worker_loop(self):
+        while True:
+            work = self.input_queue.get()
+            if work is WorkerPoolDoneWork:
+                print("Done")
+                break
+            result = self.worker_fn(work)
+            self.output_queue.put(result)
+
+    def __del__(self):
+        for _ in self.workers:
+            self.input_queue.put(WorkerPoolDoneWork)
+
+    def get(self, block=True, timeout=None):
+        return self.output_queue.get(block, timeout)
+
+    def put(self, work, block=True, timeout=None):
+        self.input_queue.put(work, block, timeout)
+
+def single_example_passthrough(batch):
+    assert len(batch) == 1
+    return batch[0]

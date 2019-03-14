@@ -17,7 +17,8 @@ from ggdtrack.dataset import ground_truth_tracks
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch, split_track_on_missing_edge
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.lptrack import lp_track, show_tracks, interpolate_missing_detections, lp_track_weights
-from ggdtrack.utils import default_torch_device, load_graph, promote_graph, demote_graph
+from ggdtrack.utils import default_torch_device, load_graph, promote_graph, demote_graph, \
+    single_example_passthrough
 
 import torch.multiprocessing as multiprocessing
 
@@ -182,75 +183,6 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
 
-class EvalGtGraphs:
-    def __init__(self, dataset, entries, suffix):
-        self.dataset = dataset
-        self.entries = entries
-        self.suffix = suffix
-
-    def __len__(self):
-        return len(self.entries)
-
-    def __getitem__(self, item):
-        name, cam = self.entries[item]
-        scene = self.dataset.scene(cam)
-
-        graph, detection_weight_features, connection_batch = torch.load(name + self.suffix)
-        promote_graph(graph)
-
-        gt_tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
-        gt_tracks = split_track_on_missing_edge(gt_tracks)
-
-        for det in graph:
-            det.gt_entry = 0.0
-            det.gt_present = 0.0 if det.track_id is None else 1.0
-            det.gt_next = [0.0] * len(det.next)
-        for tr in gt_tracks:
-            tr[0].gt_entry = 1.0
-            prv = None
-            for det in tr:
-                if prv is not None:
-                    prv.gt_next[prv.next.index(det)] = 1.0
-                prv = det
-
-        demote_graph(graph)
-        return graph, detection_weight_features, connection_batch
-
-def single_example_passthrough(batch):
-    assert len(batch) == 1
-    return batch[0]
-
-class WorkerPoolDonwWork: pass
-
-class WorkerPool:
-    def __init__(self, num_workers, worker_fn):
-        self.input_queue = multiprocessing.Queue(num_workers + 1)
-        self.output_queue = multiprocessing.Queue(2 * num_workers + 2)
-        self.workers = []
-        self.worker_fn = worker_fn
-
-        for i in range(num_workers):
-            w = multiprocessing.Process(target=self.worker_loop, daemon=True)
-            self.workers.append(w)
-            w.start()
-
-    def worker_loop(self):
-        while True:
-            work = self.input_queue.get()
-            if work is WorkerPoolDonwWork:
-                break
-            result = self.worker_fn(work)
-            self.output_queue.put(result)
-
-    def __del__(self):
-        for _ in self.workers:
-            self.input_queue.put(WorkerPoolDonwWork)
-
-    def get(self, block=True, timeout=None):
-        return self.output_queue.get(block, timeout)
-
-    def put(self, work, block=True, timeout=None):
-        self.input_queue.put(work, block, timeout)
 
 def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_device, limit=None, epochs=1000,
                    resume_from=None, save_every=None):
@@ -402,7 +334,8 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    from ggdtrack.eval import prep_eval_graphs
+    from ggdtrack.eval import prep_eval_graphs, EvalGtGraphs
+
     t0 = time.time()
 
     dataset = Duke('data')
