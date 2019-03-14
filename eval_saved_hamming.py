@@ -6,12 +6,15 @@ from random import shuffle
 import torch
 
 from ggdtrack.duke_dataset import Duke
-from ggdtrack.eval import eval_hamming, ConnectionBatch
+from ggdtrack.eval import eval_hamming, ConnectionBatch, prep_eval_graphs
 from ggdtrack.model import NNModelGraphresPerConnection
 from ggdtrack.utils import  save_json
 
+
 dataset = Duke("data")
 model = NNModelGraphresPerConnection()
+
+prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["train"])
 
 models = glob("cachedir/logdir/model*")
 shuffle(models)

@@ -302,7 +302,9 @@ def eval_hamming(dataset, logdir, model, device=default_torch_device):
     model.to(device)
 
     threads = torch.multiprocessing.cpu_count() - 2
-    entries = graph_names(dataset, "eval")
+    entries = graph_names(dataset, "train")
+    shuffle(entries)
+    entries = entries[:20]
     train_data = EvalGtGraphs(dataset, entries, '-%s-eval_graph' % model.feature_name)
     train_loader = DataLoader(train_data, 1, True, collate_fn=single_example_passthrough, num_workers=threads)
 
