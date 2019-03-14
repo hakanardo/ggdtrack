@@ -256,6 +256,7 @@ def prep_training_graphs(dataset, threads=None, segment_length_s=10, segment_ove
     jobs.sort(key=lambda j: j[3])
     Random(42).shuffle(jobs)
     if limit is not None:
+        jobs = [j for j in jobs if j[4] != 'test']
         jobs = jobs[:limit]
 
     for part, entry in parallel(prep_training_graphs_worker, jobs, threads, 'Preppping training graphs'):
