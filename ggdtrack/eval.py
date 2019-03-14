@@ -84,11 +84,12 @@ def prep_eval_tracks_worker(args):
     return ofn
 
 def prep_eval_tracks(dataset, logdir, model, part='eval', device=default_torch_device, threads=None, limit=None):
-    if os.path.isfile(logdir):
-        fn = logdir
-    else:
-        fn = sorted(glob("%s/snapshot_???.pyt" % logdir))[-1]
-    model.load_state_dict(torch.load(fn)['model_state'])
+    if logdir is not None:
+        if os.path.isfile(logdir):
+            fn = logdir
+        else:
+            fn = sorted(glob("%s/snapshot_???.pyt" % logdir))[-1]
+        model.load_state_dict(torch.load(fn)['model_state'])
     model.eval()
     model.to(device)
 

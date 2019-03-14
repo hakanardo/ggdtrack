@@ -65,7 +65,7 @@ class NormStats:
 
 def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, limit=None, epochs=10,
                            resume=False, mean_from=None,
-                           batch_size=256, learning_rate=1e-3, max_time=np.inf):
+                           batch_size=256, learning_rate=1e-3, max_time=np.inf, save_every=None):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -125,7 +125,8 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         model.edge_model.long_model.mean = edge_long_stats.mean
         model.edge_model.long_model.std = torch.sqrt(edge_long_stats.var)
 
-    start_time = time.time()
+    save_count = 0
+    start_time = last_save = time.time()
     for epoch in range(start_epoch, start_epoch + epochs):
         model.train()
         total_loss = batches = examples = correct = 0
@@ -143,6 +144,11 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
             optimizer.step()
             if time.time() - start_time > max_time:
                 return
+            if save_every and time.time() - last_save > save_every:
+                last_save = time.time()
+                torch.save(model.state_dict(), os.path.join(logdir, "model_%.4d.pyt" % save_count))
+                save_count += 1
+
         train_acc = correct / examples
         train_loss = total_loss / examples
 
@@ -388,12 +394,14 @@ if __name__ == '__main__':
 
     dataset = Duke('data')
     # train_graphres_minimal(dataset, "logdir", NNModelGraphresPerConnection())
+    train_graphres_minimal(dataset, "cachedir/logdir", NNModelGraphresPerConnection(), save_every=1)
+
 
     # train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt")
     seed(42)
     # train_frossard(dataset, "cachedir/logdir_fossard", NNModelGraphresPerConnection(), resume_from="cachedir/logdir_fossard", limit=1)
 
-    train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt", limit=1)
+    # train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), mean_from="cachedir/logdir/snapshot_009.pyt", limit=1)
     # train_frossard(dataset, "cachedir/logdir_fossard2", NNModelGraphresPerConnection(), resume_from="cachedir/logdir/snapshot_009.pyt", epochs=10)
     print(time.time() - t0)
 
