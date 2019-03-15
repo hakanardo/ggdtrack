@@ -6,6 +6,9 @@ from vi3o import view
 import numpy as np
 import pickle
 import os
+
+from vi3o.image import imsave
+
 from ggdtrack.utils import parallel, save_json, save_pickle, load_json, save_graph
 
 
@@ -271,6 +274,16 @@ def graph_names(dataset, part):
         return parts[part]
 
 
+def make_duke_test_video():
+    cam = 2
+    seq = []
+    for frame_idx, frame, detections in video_detections(Duke('/home/hakan/src/duke').scene(cam), 54373, 10):
+        fn = "test/data/duke_frame_%d_%.8d.jpg" % (cam, frame_idx)
+        imsave(frame, fn)
+        seq.append((frame_idx, fn.replace("test/", ""), detections))
+    save_pickle(seq, "test/data/duke_test_seq_cam2_10.pck")
+
+
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     # show_detections(video_detections(Duke('/home/hakan/src/duke').scene(1), 124472, 1000, 0.3))
@@ -283,4 +296,7 @@ if __name__ == '__main__':
     # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))
     # Duke('/home/hakan/src/duke').scene(7).frame(336553 + 1129-2)
     # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 232034, 600, "cachedir/graphs/duke_graph_2_00232034.pck", "test"))
-    prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 54373, 600, "cachedir/graphs/duke_graph_2_00054373.pck", "??"))
+    # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 54373, 600, "cachedir/graphs/duke_graph_2_00054373.pck", "??"))
+    # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 54373, 10, "cachedir/graphs/tst.pck", "??"))
+    # make_graph(video_detections(Duke('/home/hakan/src/duke').scene(2), 54373, 10), 60, True)
+    make_duke_test_video()

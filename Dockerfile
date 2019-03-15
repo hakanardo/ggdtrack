@@ -21,7 +21,7 @@ COPY ggdtrack /workspace/ggdtrack
 COPY setup.py /workspace/
 COPY test /workspace/test
 COPY full_run.py /workspace/
-COPY fossard_run.py /workspace/
+COPY frossard_run.py /workspace/
 COPY eval_saved.py /workspace/
 COPY eval_saved_hamming.py /workspace/
 RUN python setup.py install

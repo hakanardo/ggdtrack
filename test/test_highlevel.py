@@ -1,10 +1,14 @@
 import os
+from collections import defaultdict
 from tempfile import TemporaryDirectory
 
 import torch
+from vi3o.image import imread
 
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
+from ggdtrack.klt_det_connect import make_graph
 from ggdtrack.model import NNModelGraphresPerConnection
+from ggdtrack.utils import load_pickle
 
 mydir = os.path.dirname(__file__)
 
@@ -32,4 +36,30 @@ class TestHigh:
                 l = model.ggd_batch_forward(batch)
                 for i in range(i0, i0 + batch_size):
                     assert abs(l[i-i0].item() - old[i]) < 1e-3
+
+    def make_graph(self):
+        video_detections = load_pickle(os.path.join(mydir, "data", "duke_test_seq_cam2_10.pck"))
+        video_detections = [(frame_idx, imread(os.path.join(mydir, frame)), detections)
+                            for frame_idx, frame, detections in video_detections]
+        return make_graph(video_detections, 60)
+
+    def test_make_graph(self):
+        graph = self.make_graph()
+        frames = list({det.frame for det in graph})
+        frames.sort()
+        assert len(frames) == 10
+
+        frame_detections = defaultdict(set)
+        for det in graph:
+            frame_detections[det.frame].add(det)
+        for f in frames:
+            assert len(frame_detections[f]) == 2
+        for f in frames[:-1]:
+            for det in frame_detections[f]:
+                ok = False
+                for nxt in det.next_weight_data.keys():
+                    assert nxt.frame > f
+                    if nxt.frame == f + 1:
+                        ok = True
+                assert ok
 
