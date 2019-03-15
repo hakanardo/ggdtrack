@@ -4,6 +4,7 @@ import uuid
 from multiprocessing import cpu_count
 from multiprocessing.pool import Pool
 import pickle
+from random import shuffle
 from urllib.parse import urlparse
 import requests
 
@@ -11,6 +12,7 @@ import torch
 
 import sys
 
+from torch.utils.data import Subset
 from tqdm import tqdm
 
 sys.setrecursionlimit(100000)
@@ -160,3 +162,12 @@ class WorkerPool:
 def single_example_passthrough(batch):
     assert len(batch) == 1
     return batch[0]
+
+class RandomSubset(Subset):
+    def __init__(self, dataset, n):
+        n = int(n)
+        self.dataset = dataset
+        indices = list(range(len(dataset)))
+        shuffle(indices)
+        self.indices = indices[:n]
+        self.unused_indices = indices[n:]

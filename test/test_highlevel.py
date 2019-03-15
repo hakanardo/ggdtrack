@@ -5,12 +5,21 @@ from tempfile import TemporaryDirectory
 import torch
 from vi3o.image import imread
 
-from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
+from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch, find_minimal_graph_diff
 from ggdtrack.klt_det_connect import make_graph
 from ggdtrack.model import NNModelGraphresPerConnection
 from ggdtrack.utils import load_pickle
 
 mydir = os.path.dirname(__file__)
+
+
+class FakeScene:
+    def __init__(self, ground_truth):
+        self._ground_truth = ground_truth
+
+    def ground_truth(self):
+        return self._ground_truth
+
 
 class TestHigh:
     def test_ggd_batches(self):
@@ -39,12 +48,13 @@ class TestHigh:
 
     def make_graph(self):
         video_detections = load_pickle(os.path.join(mydir, "data", "duke_test_seq_cam2_10.pck"))
+        ground_truth = load_pickle(os.path.join(mydir, "data", "duke_test_seq_cam2_10_gt.pck"))
         video_detections = [(frame_idx, imread(os.path.join(mydir, frame)), detections)
                             for frame_idx, frame, detections in video_detections]
-        return make_graph(video_detections, 60)
+        return make_graph(video_detections, 60), ground_truth
 
     def test_make_graph(self):
-        graph = self.make_graph()
+        graph, _ = self.make_graph()
         frames = list({det.frame for det in graph})
         frames.sort()
         assert len(frames) == 10
@@ -62,4 +72,14 @@ class TestHigh:
                     if nxt.frame == f + 1:
                         ok = True
                 assert ok
+
+    def test_full_ggd_train(self):
+        graph, ground_truth = self.make_graph()
+        print(ground_truth)
+        model = NNModelGraphresPerConnection()
+        scene = FakeScene(ground_truth)
+        graph_diff = find_minimal_graph_diff(scene, graph, model)
+
+
+
 

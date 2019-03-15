@@ -7,6 +7,7 @@ import time
 import numpy as np
 
 import torch
+from networkx.generators.random_graphs import _random_subset
 from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
@@ -14,7 +15,8 @@ from torch.utils.data import DataLoader
 from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.lptrack import show_tracks, interpolate_missing_detections, lp_track_weights
-from ggdtrack.utils import default_torch_device, promote_graph, demote_graph, single_example_passthrough
+from ggdtrack.utils import default_torch_device, promote_graph, demote_graph, single_example_passthrough, \
+    RandomSubset
 from ggdtrack.eval import EvalGtGraphs
 
 import torch.multiprocessing as multiprocessing
@@ -63,7 +65,8 @@ class NormStats:
 
 def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, limit=None, epochs=10,
                            resume=False, mean_from=None,
-                           batch_size=256, learning_rate=1e-3, max_time=np.inf, save_every=None):
+                           batch_size=256, learning_rate=1e-3, max_time=np.inf, save_every=None,
+                           max_worse_eval_epochs=float('Inf'), train_amount=None, eval_amount=None):
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -81,14 +84,18 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
             rmtree(logdir)
         os.makedirs(logdir)
 
+    if limit is not None:
+        assert train_amount is None
+        assert eval_amount is None
+        train_amount = eval_amount = limit
+
 
     train_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_train" % (dataset.name, model.feature_name), model, "r", lazy=True)
     eval_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_eval" % (dataset.name, model.feature_name), model, "r", lazy=True)
-    if limit:
-        n = int(limit * len(train_data))
-        train_data, _ = torch.utils.data.random_split(train_data, [n, len(train_data) - n])
-        n = int(limit * len(eval_data))
-        eval_data, _ = torch.utils.data.random_split(eval_data, [n, len(eval_data) - n])
+    if train_amount is not None:
+        train_data = RandomSubset(train_data, train_amount * len(train_data))
+    if eval_amount is not None:
+        eval_data = RandomSubset(eval_data, eval_amount * len(eval_data))
     train_loader = DataLoader(train_data, batch_size, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
     eval_loader = DataLoader(eval_data, batch_size, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
 
@@ -125,6 +132,7 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
 
     save_count = 0
     start_time = last_save = time.time()
+    best_epoch = best_accuracy = -1
     for epoch in range(start_epoch, start_epoch + epochs):
         model.train()
         total_loss = batches = examples = correct = 0
@@ -163,6 +171,10 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         eval_acc = correct / examples
         eval_loss = total_loss / examples
 
+        if eval_acc >= best_accuracy:
+            best_accuracy = eval_acc
+            best_epoch = epoch
+
         loss = total_loss / batches
         print('%3d Loss: %9.6f, Train Accuracy: %9.6f %%, Eval Accuracy: %9.6f %%' % (epoch, train_loss, 100 * train_acc, 100 * eval_acc))
         writer.add_scalar('Loss/Train', train_loss, epoch)
@@ -180,6 +192,8 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         }
         torch.save(snapp, os.path.join(logdir, "snapshot_%.3d.pyt" % epoch))
 
+        if epoch - best_epoch >= max_worse_eval_epochs:
+            break
 
 def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_device, limit=None, epochs=1000,
                    resume_from=None, save_every=None):
@@ -271,6 +285,8 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
                     except Empty:
                         break
                     promote_graph(graph)
+                if not graph:
+                    continue
 
 
                 if batch_count >= len(train_data):

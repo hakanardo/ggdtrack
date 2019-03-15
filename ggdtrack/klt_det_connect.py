@@ -277,11 +277,15 @@ def graph_names(dataset, part):
 def make_duke_test_video():
     cam = 2
     seq = []
-    for frame_idx, frame, detections in video_detections(Duke('/home/hakan/src/duke').scene(cam), 54373, 10):
+    scene = Duke('/home/hakan/src/duke').scene(cam)
+    for frame_idx, frame, detections in video_detections(scene, 54373, 10):
         fn = "test/data/duke_frame_%d_%.8d.jpg" % (cam, frame_idx)
         imsave(frame, fn)
         seq.append((frame_idx, fn.replace("test/", ""), detections))
     save_pickle(seq, "test/data/duke_test_seq_cam2_10.pck")
+    gt = scene.ground_truth()
+    gt = {f: gt[f] for f, _, _ in seq}
+    save_pickle(gt, "test/data/duke_test_seq_cam2_10_gt.pck")
 
 
 if __name__ == '__main__':
