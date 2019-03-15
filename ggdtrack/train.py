@@ -1,5 +1,4 @@
 import os
-from collections import defaultdict
 from glob import glob
 from queue import Empty
 from random import shuffle, seed
@@ -11,14 +10,12 @@ import torch
 from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
-from ggdtrack.dataset import ground_truth_tracks
-from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch, split_track_on_missing_edge
+from ggdtrack.graph_diff import GraphDiffList, make_ggd_batch
 from ggdtrack.klt_det_connect import graph_names
-from ggdtrack.lptrack import lp_track, show_tracks, interpolate_missing_detections, lp_track_weights
-from ggdtrack.utils import default_torch_device, load_graph, promote_graph, demote_graph, \
-    single_example_passthrough
+from ggdtrack.lptrack import show_tracks, interpolate_missing_detections, lp_track_weights
+from ggdtrack.utils import default_torch_device, promote_graph, demote_graph, single_example_passthrough
+from ggdtrack.eval import EvalGtGraphs
 
 import torch.multiprocessing as multiprocessing
 
@@ -261,8 +258,6 @@ def train_frossard(dataset, logdir, model, mean_from=None, device=default_torch_
             connection_weights = model.connection_batch_forward(connection_batch.to(device))
             detection_weights = model.detection_model(detection_weight_features.to(device))
 
-            # promote_graph(graph)
-            # tracks = lp_track_weights(graph, connection_weights, detection_weights, model.entry_weight, add_gt_hamming=True)
             if lp_tracker_pool is not None:
                 lp_tracker_pool.put((graph, connection_weights.detach().cpu(), detection_weights.detach().cpu(), model.entry_weight, connection_batch, detection_weight_features))
             else:
