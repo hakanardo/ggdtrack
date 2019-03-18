@@ -24,6 +24,7 @@ COPY full_run.py /workspace/
 COPY frossard_run.py /workspace/
 COPY eval_saved.py /workspace/
 COPY eval_saved_hamming.py /workspace/
+COPY data_run.py /workspace/
 RUN python setup.py install
 
 
