@@ -325,14 +325,38 @@ def eval_hamming(dataset, logdir, model, device=default_torch_device):
         hamming += eval_hamming_worker.pool.get()
     return hamming
 
+def prep_eval_gt_tracks_worker(args):
+    model, name, scene = args
+    ofn = os.path.join("cachedir/tracks", os.path.basename(name))
+
+    graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
+    promote_graph(graph)
+    gt_tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+    tracks = split_track_on_missing_edge(gt_tracks)
+    for tr in tracks:
+        for det in tr:
+            det.__dict__ = {}
+    save_pickle(tracks, ofn)
+
+    return ofn
+
+def prep_eval_gt_tracks(dataset, model, part='eval', threads=None):
+    limit = graph_names(dataset, part)
+    jobs = [(model, name, dataset.scene(cam)) for name, cam in limit]
+    shuffle(jobs)
+    parallel_run(prep_eval_gt_tracks_worker, jobs, threads, "Prepping eval tracks for %s" % part)
+
+
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    dataset = Duke('/home/hakan/src/duke')
+    dataset = Duke('data')
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)
     # prep_eval_tracks(dataset, "logdir", NNModelGraphresPerConnection())
     # eval_prepped_tracks(dataset)
     # eval_prepped_tracks_csv(dataset, "cachedir/logdir", "test")
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["eval"])
-    print(eval_hamming(dataset, "cachedir/logdir", NNModelGraphresPerConnection()))
+    # print(eval_hamming(dataset, "cachedir/logdir", NNModelGraphresPerConnection()))
+    prep_eval_gt_tracks(dataset, NNModelGraphresPerConnection)
+    res, res_int = eval_prepped_tracks(dataset, 'eval')
