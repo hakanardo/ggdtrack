@@ -9,8 +9,10 @@ import matplotlib.pyplot as plt
 
 motas = defaultdict(list)
 times = defaultdict(list)
-for fn in glob("cachedir/logdir_?.??_??/eval_results_int.txt"):
+for fn in glob("cachedir/logdir_?.*_??/eval_results_int.txt"):
     amount = float(fn.split('_')[1])
+    if amount == 0.0:
+        continue
     snapshots = sorted(glob(os.path.dirname(fn) + "/snapshot_???.pyt"))
     ts0 = stat(snapshots[0]).st_mtime_ns / 1e9
     ts1 = stat(snapshots[-1]).st_mtime_ns / 1e9
@@ -27,6 +29,8 @@ for amount in sorted(motas.keys()):
     data.append((amount, np.mean(mm), np.std(mm), np.mean(tt),
                  np.median(mm), np.quantile(mm, 0.10), np.quantile(mm, 0.90)))
 data = np.array(data)
+print(data[:,3]/60)
+print(data[:,4])
 
 
 
@@ -42,12 +46,14 @@ color2 = '#6b406e'
 # ax2.plot(data[:, 0], data[:, 1], '-', color=color2)
 # ax2.plot(data[:, 0], data[:, 1] - 2 * data[:, 2], '--', color=color2)
 # ax2.plot(data[:, 0], data[:, 1] + 2 * data[:, 2], '--', color=color2)
-ax2.plot(data[:, 0], data[:, 4], '-', color=color2)
-ax2.plot(data[:, 0], data[:, 5], '--', color=color2)
-ax2.plot(data[:, 0], data[:, 6], '--', color=color2)
+ax2.plot(data[:, 0], data[:, 4], '-', color=color2, label="Median MOTA Score")
+ax2.plot(data[:, 0], data[:, 5], '--', color=color2, label="10 % Quantile MOTA Score")
+ax2.plot(data[:, 0], data[:, 6], '--', color=color2, label="90 % Quantile MOTA Score")
+# ax2.plot([min(data[:,0]), 1], [83.4, 83.4], ':', color=color2, label="Ground truth tracks")
 ax2.set_xlabel('Amount of training data used')
 ax2.set_ylabel('MOTA', color=color2)
 ax2.tick_params('y', colors=color2)
+ax2.legend(loc='center')
 
 fig.tight_layout()
 plt.show()

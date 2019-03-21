@@ -17,7 +17,7 @@ def main():
 
     for train_amount in [0.001, 0.0001, 0.00001]:
         for itt in range(10):
-            logdir = "cachedir/logdir_%4.2f_%.2d" % (train_amount, itt)
+            logdir = "cachedir/logdir_%8.6f_%.2d" % (train_amount, itt)
             model = NNModelGraphresPerConnection()
             train_graphres_minimal(dataset, logdir, model, epochs=1000, max_worse_eval_epochs=max_extra, train_amount=train_amount)
 
