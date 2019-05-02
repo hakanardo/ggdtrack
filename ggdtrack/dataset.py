@@ -152,21 +152,29 @@ class Scene:
     parts = {'train': (), 'eval': (), 'test': ()}
     name = 'Unknown'
 
-    def frame(self, frame):
-        raise NotImplementedError
+    def __init__(self, dataset, name):
+        self.dataset = dataset
+        self.name = name
 
-    def ground_truth(self):
-        raise NotImplementedError
+    def frame(self, frame):
+        return self.dataset.frame(self.name, frame)
 
     def detections(self, start_frame=1, stop_frame=np.inf):
-        raise NotImplementedError
+        return self.dataset.detections(self.name, start_frame, stop_frame)
+
+    def ground_truth(self):
+        return self.dataset.ground_truth(self.name)
 
     def roi(self):
-        raise NotImplementedError
+        return self.dataset.roi(self.name)
 
     @property
     def default_min_conf(self):
         return self.dataset.default_min_conf
+
+    @property
+    def class_names(self):
+        return self.dataset.class_names
 
 
 def ground_truth_tracks(gt_frames, graph, iou_threshold=0.3):

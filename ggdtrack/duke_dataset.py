@@ -131,6 +131,13 @@ class Duke(Dataset):
     def prepare(self):
         self.convert_ground_truth()
 
+    def prepare_submition(self, logdir):
+        os.system("cat  %s/result_duke_test_int/*_submit.txt > %s/duke.txt"  % (logdir, logdir))
+        if os.path.exists("%s/duke.zip" % logdir):
+            os.unlink("%s/duke.zip" % logdir)
+        os.system("cd %s; zip duke.zip duke.txt" % logdir)
+
+
 
 class DukeScene(Scene):
     fps = 60
@@ -141,24 +148,10 @@ class DukeScene(Scene):
                    }
 
     def __init__(self, dataset, name):
-        self.dataset = dataset
-        self.name = name
+        Scene.__init__(self, dataset, name)
         f0 = self.start_times[name]
         self.parts = {n: range(r.start - f0, r.stop - f0)
                       for n, r in self.global_parts.items()}
-
-    def frame(self, frame):
-        return self.dataset.frame(self.name, frame)
-
-    def detections(self, start_frame=1, stop_frame=np.inf):
-        return self.dataset.detections(self.name, start_frame, stop_frame)
-
-    def ground_truth(self):
-        return self.dataset.ground_truth(self.name)
-
-    def roi(self):
-        return self.dataset.roi(self.name)
-
 
 
 class DukeVideoReader:

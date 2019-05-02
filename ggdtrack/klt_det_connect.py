@@ -224,11 +224,6 @@ def make_graph(video_detections, fps, show=False):
 
     return graph
 
-def show_detections(viddet):
-    for frame_idx, frame, detections in viddet:
-        for det in detections:
-            det.draw(frame, label=str(det.confidence))
-        view(frame)
 
 def prep_training_graphs_worker(arg):
     scene, f0, myseg, graph_name, part = arg
@@ -290,8 +285,7 @@ def make_duke_test_video():
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
-    # show_detections(video_detections(Duke('/home/hakan/src/duke').scene(1), 124472, 1000, 0.3))
-    # show_detections(video_detections(Duke('/home/hakan/src/duke', 'openpose').scene(1), 124472, 1000, 0.3))
+    from ggdtrack.visdrone_dataset import VisDrone
 
     # scene = Duke('/home/hakan/src/duke').scene(1)
     # make_graph(video_detections(scene, 124472, 100, 0), scene.fps, True, True)
@@ -303,4 +297,6 @@ if __name__ == '__main__':
     # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 54373, 600, "cachedir/graphs/duke_graph_2_00054373.pck", "??"))
     # prep_training_graphs_worker((Duke('/home/hakan/src/duke').scene(2), 54373, 10, "cachedir/graphs/tst.pck", "??"))
     # make_graph(video_detections(Duke('/home/hakan/src/duke').scene(2), 54373, 10), 60, True)
-    make_duke_test_video()
+    # make_duke_test_video()
+
+    make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000323_01173_v"), 1, 100), 25, True)
