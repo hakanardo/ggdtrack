@@ -351,12 +351,17 @@ def prep_eval_gt_tracks(dataset, model, part='eval', threads=None):
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    dataset = Duke('data')
+    from ggdtrack.visdrone_dataset import VisDrone
+    # dataset = Duke('data')
+    dataset = VisDrone('data')
+
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)
     # prep_eval_tracks(dataset, "logdir", NNModelGraphresPerConnection())
     # eval_prepped_tracks(dataset)
     # eval_prepped_tracks_csv(dataset, "cachedir/logdir", "test")
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection(), parts=["eval"])
     # print(eval_hamming(dataset, "cachedir/logdir", NNModelGraphresPerConnection()))
-    prep_eval_gt_tracks(dataset, NNModelGraphresPerConnection)
-    res, res_int = eval_prepped_tracks(dataset, 'eval')
+    # prep_eval_gt_tracks(dataset, NNModelGraphresPerConnection)
+    # res, res_int = eval_prepped_tracks(dataset, 'eval')
+
+    eval_prepped_tracks_csv(dataset, "cachedir/logdir_%s" % dataset.name, 'eval')

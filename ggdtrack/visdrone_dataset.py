@@ -78,7 +78,8 @@ class VisDrone(Dataset):
         pass
 
     def roi(self, scene):
-        raise NotImplementedError
+        h, w, _ = self.frame(scene, 1).shape
+        return [(0, 0), (0, w), (h, w), (h, 0)]
 
 
 class VisDroneScene(Scene):
@@ -89,9 +90,6 @@ class VisDroneScene(Scene):
         n = len(os.listdir(os.path.join(dataset._path(name, 'sequences'))))
         self.parts = {part: range(1, n+1) for part in ['train', 'eval', 'test']}
         self._detections = None
-
-    def frame(self, frame):
-        return self.dataset.frame(self.name, frame)
 
     def detections(self, start_frame=1, stop_frame=np.inf):
         if self._detections is None:
@@ -119,11 +117,4 @@ class VisDroneScene(Scene):
         for f in range(start_frame, stop_frame + 1):
             for det in self._detections[f]:
                 yield det
-
-
-    def ground_truth(self):
-        return self.dataset.ground_truth(self.name)
-
-    def roi(self):
-        return self.dataset.roi(self.name)
 
