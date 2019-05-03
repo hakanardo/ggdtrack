@@ -364,4 +364,5 @@ if __name__ == '__main__':
     # prep_eval_gt_tracks(dataset, NNModelGraphresPerConnection)
     # res, res_int = eval_prepped_tracks(dataset, 'eval')
 
-    eval_prepped_tracks_csv(dataset, "cachedir/logdir_%s" % dataset.name, 'eval')
+    prep_eval_tracks(dataset, "cachedir/logdir_%s" % dataset.name, NNModelGraphresPerConnection(), 'eval', threads=1)
+    # eval_prepped_tracks_csv(dataset, "cachedir/logdir_%s" % dataset.name, 'eval')

@@ -242,7 +242,7 @@ def prep_training_graphs(dataset, threads=None, segment_length_s=10, segment_ove
             segment_length = segment_length_s * scene.fps
             segment_overlap = segment_overlap_s * scene.fps
             f0 = scene.parts[part].start
-            while f0 + segment_length <  scene.parts[part].stop:
+            while f0 + segment_length <  scene.parts[part].stop or f0 == scene.parts[part].start:
                 if f0 + 2*segment_length >  scene.parts[part].stop:
                     myseg = scene.parts[part].stop - f0 - 1
                 else:

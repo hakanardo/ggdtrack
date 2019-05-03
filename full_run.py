@@ -20,12 +20,13 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--datadir", default="data", help="Directory into which the Duke dataset will be downloaded")
 @click.option("--limit", default=None, type=int, help="The number of graphs to use. Default is all of them.")
 @click.option("--threads", default=None, type=int, help="The number of threads to use. Default is one per CPU core.")
-def main(dataset, datadir, limit, threads):
+@click.option("--segment-length", default=10, type=int, help="The length in seconds of video used for each garph")
+def main(dataset, datadir, limit, threads, segment_length):
     dataset = eval(dataset)(datadir)
     dataset.download()
     dataset.prepare()
 
-    prep_training_graphs(dataset, limit=limit, threads=threads)
+    prep_training_graphs(dataset, limit=limit, threads=threads, segment_length_s=segment_length)
 
     model = NNModelGraphresPerConnection()
     prep_minimal_graph_diffs(dataset, model, threads=threads)
