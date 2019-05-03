@@ -79,7 +79,7 @@ class VisDrone(Dataset):
 
     def roi(self, scene):
         h, w, _ = self.frame(scene, 1).shape
-        return [(0, 0), (0, w), (h, w), (h, 0)]
+        return [(0, 0), (0, h-1), (w-1, h), (w-1, 0)]
 
 
 class VisDroneScene(Scene):

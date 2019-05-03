@@ -6,6 +6,7 @@ from vi3o import view
 import numpy as np
 
 
+
 def hamming_weight(v, gt):
     if gt == 0.0:
         return v
@@ -115,5 +116,7 @@ def show_tracks(scene, tracks, frame_dets=()):
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
+    from ggdtrack.visdrone_dataset import VisDrone
     from ggdtrack.utils import load_pickle
-    show_tracks(Duke('/home/hakan/src/duke').scene(3), interpolate_missing_detections(load_pickle("tracks/duke_graph_3_00190415.pck")))
+    # show_tracks(Duke('/home/hakan/src/duke').scene(3), interpolate_missing_detections(load_pickle("tracks/duke_graph_3_00190415.pck")))
+    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000086_00000_v_00000001.pck")))
