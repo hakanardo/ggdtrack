@@ -299,4 +299,5 @@ if __name__ == '__main__':
     # make_graph(video_detections(Duke('/home/hakan/src/duke').scene(2), 54373, 10), 60, True)
     # make_duke_test_video()
 
-    make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), 1, 184), 25, True)
+    # make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), 1, 184), 25, True)
+    make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000137_00458_v"), 1, 10000), 25, True)

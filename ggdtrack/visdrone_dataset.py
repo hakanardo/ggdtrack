@@ -11,7 +11,7 @@ import numpy as np
 
 
 def nms(detections):
-    detections.sort(key=lambda d: d.confidence)
+    detections.sort(key=lambda d: d.confidence, reverse=True)
     selected = []
     for det in detections:
         for old in selected:

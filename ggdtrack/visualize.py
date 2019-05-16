@@ -31,5 +31,5 @@ if __name__ == '__main__':
     # show_detections(video_detections(Duke('/home/hakan/src/duke').scene(1), 124472, 1000, 0.3))
     # show_detections(video_detections(Duke('/home/hakan/src/duke', 'openpose').scene(1), 124472, 1000, 0.3))
 
-    show_gt(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000323_01173_v"))
-    # show_detections(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000323_01173_v"), 1, 1000))
+    # show_gt(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000323_01173_v"))
+    show_detections(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000323_01173_v"), 1, 1000))
