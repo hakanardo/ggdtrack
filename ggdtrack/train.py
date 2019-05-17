@@ -96,7 +96,7 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         train_data = RandomSubset(train_data, train_amount * len(train_data))
     if eval_amount is not None:
         eval_data = RandomSubset(eval_data, eval_amount * len(eval_data))
-    train_loader = DataLoader(train_data, batch_size, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
+    train_loader = DataLoader(train_data, batch_size, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6, shuffle=True)
     eval_loader = DataLoader(eval_data, batch_size, pin_memory=True, collate_fn=make_ggd_batch, num_workers=6)
 
     writer = SummaryWriter(logdir, comment="_bs=%d_lr=1e%4.1f" % (batch_size, np.log10(learning_rate)))
