@@ -175,7 +175,11 @@ class NNModelGraphresPerConnection(NNModel):
         for kind, val in det.next_weight_data[nxt]:
             if kind == 'klt':
                 df = nxt.frame - det.frame
-                conf = min(-c for _,_,_,c in val if c is not None and c < 1e3)
+                conf = [-c for _,_,_,c in val if c is not None and c < 1e3]
+                if conf:
+                    conf = min(conf)
+                else:
+                    conf = -1e3
                 t = np.linspace(0, len(val)-1, 10)
                 xx = np.interp(t, range(len(val)), [p[1] for p in val])
                 yy = np.interp(t, range(len(val)), [p[2] for p in val])
