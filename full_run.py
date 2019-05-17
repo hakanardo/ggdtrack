@@ -32,7 +32,7 @@ def main(dataset, datadir, limit, threads, segment_length):
     prep_minimal_graph_diffs(dataset, model, threads=threads)
     prep_eval_graphs(dataset, model, threads=threads)
 
-    train_graphres_minimal(dataset, "cachedir/logdir_%s" % dataset.name, model, save_every=10)
+    train_graphres_minimal(dataset, "cachedir/logdir_%s" % dataset.name, model)
 
     prep_eval_tracks(dataset, "cachedir/logdir_%s" % dataset.name, model, 'eval', threads=1)
     res, res_int = eval_prepped_tracks(dataset, 'eval')
