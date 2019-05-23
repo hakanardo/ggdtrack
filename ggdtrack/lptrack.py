@@ -4,7 +4,7 @@ import cv2
 from pplp import LinearProgram
 from vi3o import view
 import numpy as np
-
+from vi3o.image import imwrite
 
 
 def hamming_weight(v, gt):
@@ -111,14 +111,17 @@ def show_tracks(scene, tracks, frame_dets=()):
         cv2.polylines(img, np.array([scene.roi()]), True, (255,255,255), thickness=1)
 
 
-        view(img, pause=True)
-        # imwrite(img, "dbg/%.8d.jpg" % f)
+        view(img) #, pause=True)
+        imwrite(img, "dbg/%.8d.jpg" % f)
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.visdrone_dataset import VisDrone
-    from ggdtrack.utils import load_pickle
+    from ggdtrack.utils import load_pickle, default_torch_device, promote_graph
+
     # show_tracks(Duke('/home/hakan/src/duke').scene(3), interpolate_missing_detections(load_pickle("tracks/duke_graph_3_00190415.pck")))
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000086_00000_v_00000001.pck")))
-    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000182_00000_v"),
-                interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000182_00000_v_00000001.pck")))
+    # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000182_00000_v"),
+    #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000182_00000_v_00000001.pck")))
+    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000268_05773_v"),
+                interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck")))
