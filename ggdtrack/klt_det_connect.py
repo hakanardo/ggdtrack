@@ -236,7 +236,7 @@ def prep_training_graphs_worker(arg):
     return part, (graph_name, scene.name)
 
 
-def prep_training_graphs(dataset, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None):
+def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None):
     lsts = {n: [] for n in dataset.parts.keys()}
     jobs = []
     for part in lsts.keys():
@@ -250,7 +250,7 @@ def prep_training_graphs(dataset, threads=None, segment_length_s=10, segment_ove
                     myseg = scene.parts[part].stop - f0 - 1
                 else:
                     myseg = segment_length
-                graph_name = "cachedir/graphs/%s_graph_%s_%.8d.pck" % (dataset.name, scene_name, f0)
+                graph_name = os.path.join(cachedir, "graphs", "%s_graph_%s_%.8d.pck" % (dataset.name, scene_name, f0))
                 jobs.append((scene, f0, myseg, graph_name, part))
                 f0 += myseg - segment_overlap
 
@@ -262,10 +262,10 @@ def prep_training_graphs(dataset, threads=None, segment_length_s=10, segment_ove
 
     for part, entry in parallel(prep_training_graphs_worker, jobs, threads, 'Preppping training graphs'):
         lsts[part].append(entry)
-        save_json(lsts, "cachedir/graphs/%s_traineval.json" % dataset.name)
+        save_json(lsts, os.path.join(cachedir, "graphs", "%s_traineval.json" % dataset.name))
 
 def graph_names(dataset, part):
-    parts = load_json("cachedir/graphs/%s_traineval.json" % dataset.name)
+    parts = load_json(os.path.join(dataset.cachedir, "graphs", "%s_traineval.json" % dataset.name))
     if part == 'trainval':
         return parts['train'] + parts['eval']
     else:

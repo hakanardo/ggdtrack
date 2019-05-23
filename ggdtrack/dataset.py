@@ -1,4 +1,5 @@
 import json
+import os
 from collections import defaultdict
 from collections import namedtuple
 
@@ -134,6 +135,12 @@ class Dataset:
     name = 'Unknown'
     parts = {'train': None, 'eval': None, 'test': None}
     default_min_conf = 0
+
+    def __init__(self, cachedir=None, logdir=None):
+        self.cachedir = cachedir if cachedir else "cachedir"
+        if logdir is None:
+            logdir = os.path.join(self.cachedir, "logdir_%s" % self.name)
+        self.logdir = logdir
 
     def scene(self, scene):
         raise NotImplementedError

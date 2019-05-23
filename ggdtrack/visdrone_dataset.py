@@ -27,7 +27,11 @@ class VisDrone(Dataset):
     name = 'VisDrone'
     class_names = ('ignored','pedestrian','person','bicycle','car','van','truck','tricycle','awning-tricyle','bus','motor', 'others')
 
-    def __init__(self, path, detections='FasterRCNN-MOT-detections', scale=1.0, default_min_conf=0.4, class_set = ('car','bus','truck','pedestrian','van')):
+    def __init__(self, path, detections='FasterRCNN-MOT-detections', scale=1.0, default_min_conf=None,
+                 class_set = ('car','bus','truck','pedestrian','van'), cachedir=None, logdir=None):
+        Dataset.__init__(self, cachedir, logdir)
+        if default_min_conf is None:
+            default_min_conf = 0.4
         self.base_path = os.path.join(path, "VisDrone2019")
         self.detections_dir = detections
         self.scale = scale

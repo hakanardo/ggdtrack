@@ -20,7 +20,10 @@ class Duke(Dataset):
     scene_names = range(1,9)
     parts = {'train': scene_names, 'eval': scene_names, 'test': scene_names}
 
-    def __init__(self, path, detections='dpm', scale=1.0, default_min_conf=0):
+    def __init__(self, path, detections='dpm', scale=1.0, default_min_conf=None, cachedir=None, logdir=None):
+        Dataset.__init__(self, cachedir, logdir)
+        if default_min_conf is None:
+            default_min_conf = 0
         self.path = os.path.join(path, 'DukeMTMC')
         self.video_reader = DukeVideoReader(self.path + '/')
         self.scale = scale
@@ -131,7 +134,8 @@ class Duke(Dataset):
     def prepare(self):
         self.convert_ground_truth()
 
-    def prepare_submition(self, logdir):
+    def prepare_submition(self):
+        logdir = self.logdir
         os.system("cat  %s/result_duke_test_int/*_submit.txt > %s/duke.txt"  % (logdir, logdir))
         if os.path.exists("%s/duke.zip" % logdir):
             os.unlink("%s/duke.zip" % logdir)

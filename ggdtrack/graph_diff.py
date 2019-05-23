@@ -285,7 +285,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
     final_trainval = {n: [] for n in trainval.keys()}
     diff_lists = {}
     jobs = []
-    os.makedirs("cachedir/minimal_graph_diff", exist_ok=True)
+    os.makedirs(os.path.join(dataset.cachedir, "minimal_graph_diff"), exist_ok=True)
     for part in trainval.keys():
         if limit is None:
             entries = graph_names(dataset, part)
@@ -296,11 +296,11 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
             shuffle(entries)
             entries = entries[:limit]
         for fn, cam in entries:
-            bfn = os.path.join("cachedir/minimal_graph_diff", model.feature_name + '-' + os.path.basename(fn))
+            bfn = os.path.join(dataset.cachedir, "minimal_graph_diff", model.feature_name + '-' + os.path.basename(fn))
             jobs.append((dataset, cam, part, model, fn, bfn))
             final_trainval[part].append(bfn)
 
-    trainval_name = "cachedir/minimal_graph_diff/%s_%s_trainval.json" % (dataset.name, model.feature_name)
+    trainval_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_trainval.json" % (dataset.name, model.feature_name))
     if os.path.exists(trainval_name):
         current_trainval = load_json(trainval_name)
         for part in trainval.keys():
@@ -310,7 +310,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
             return
 
     for part in trainval.keys():
-        dn = "cachedir/minimal_graph_diff/%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part)
+        dn = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part))
         if os.path.exists(dn):
             rmtree(dn)
         diff_lists[part] = GraphDiffList(dn, model)

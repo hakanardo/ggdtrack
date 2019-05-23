@@ -63,10 +63,11 @@ class NormStats:
         return self.sa2 / self.n - self.sa**2 / self.n**2
 
 
-def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, limit=None, epochs=10,
+def train_graphres_minimal(dataset, model, device=default_torch_device, limit=None, epochs=10,
                            resume=False, mean_from=None,
                            batch_size=256, learning_rate=1e-3, max_time=np.inf, save_every=None,
                            max_worse_eval_epochs=float('Inf'), train_amount=None, eval_amount=None):
+    logdir = dataset.logdir
     criterion = nn.BCEWithLogitsLoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -90,8 +91,8 @@ def train_graphres_minimal(dataset, logdir, model, device=default_torch_device, 
         train_amount = eval_amount = limit
 
 
-    train_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_train" % (dataset.name, model.feature_name), model, "r", lazy=True)
-    eval_data = GraphDiffList("cachedir/minimal_graph_diff/%s_%s_eval" % (dataset.name, model.feature_name), model, "r", lazy=True)
+    train_data = GraphDiffList(os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_train" % (dataset.name, model.feature_name)), model, "r", lazy=True)
+    eval_data = GraphDiffList(os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_eval" % (dataset.name, model.feature_name)), model, "r", lazy=True)
     if train_amount is not None:
         train_data = RandomSubset(train_data, train_amount * len(train_data))
     if eval_amount is not None:
