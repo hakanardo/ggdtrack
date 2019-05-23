@@ -116,6 +116,9 @@ def make_graph(video_detections, fps, show=False):
             for tr, (x, y), good_flag, e in zip(tracks, p1.reshape(-1, 2), good, err1.flat):
                 if not good_flag:
                     continue
+                if e > 1e3:
+                    print('Bad klt confidence?')
+                    print('    ', detections[0].scene.name, frame_idx, e)
                 tr.history.append((frame_idx, x, y, e))
                 tr.history = tr.history[-max_len-1:]
                 new_tracks.append(tr)
