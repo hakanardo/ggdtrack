@@ -199,7 +199,7 @@ def eval_prepped_tracks_csv(dataset, part='eval'):
         if name is None:
             break
 
-        tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
+        tracks_name = os.path.join(dataset.cachedir, "tracks", os.path.basename(name))
         tracks = load_pickle(tracks_name)
         track_frames = defaultdict(list)
         for i, tr in enumerate(tracks):
