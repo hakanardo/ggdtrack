@@ -52,4 +52,5 @@ if __name__ == '__main__':
 
     # show_gt(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('car','bus','truck','pedestrian','van')).scene("val__uav0000117_02622_v"))
     # show_detections(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000117_02622_v"), 1, 1000))
-    show_gt_and_detections(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('ignored', 'car','bus','truck','pedestrian','van')).scene("val__uav0000117_02622_v"))
+    # show_gt_and_detections(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('ignored', 'car','bus','truck','pedestrian','van')).scene("val__uav0000117_02622_v"))
+    show_gt_and_detections(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('ignored', 'car','bus','truck','pedestrian','van')).scene("val__uav0000268_05773_v"))

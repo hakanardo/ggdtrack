@@ -85,10 +85,11 @@ def interpolate_missing_detections(tracks, cpy=False):
         tr[:] = new_tr
     return tracks
 
-def show_tracks(scene, tracks, frame_dets=()):
+def show_tracks(scene, tracks, frame_dets=(), first_frame=None):
     if not tracks:
         return
-    first_frame = min(tr[0].frame for tr in tracks)
+    if first_frame is None:
+        first_frame = min(tr[0].frame for tr in tracks)
     last_frame = max(tr[-1].frame for tr in tracks)
     for f in range(first_frame, last_frame+1):
         img = scene.frame(f)
@@ -123,7 +124,8 @@ if __name__ == '__main__':
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000086_00000_v_00000001.pck")))
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000182_00000_v"),
     #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000182_00000_v_00000001.pck")))
-    # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000268_05773_v"),
-    #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck")))
-    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000117_02622_v"),
-                interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000117_02622_v_00000001.pck")))
+    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000268_05773_v"),
+                interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck")),
+                first_frame=500)
+    # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000117_02622_v"),
+    #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000117_02622_v_00000001.pck")))
