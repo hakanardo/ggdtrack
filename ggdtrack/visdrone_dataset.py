@@ -92,7 +92,10 @@ class VisDrone(Dataset):
 
     def ignore_regions(self, scene):
         if self._ignore_regions is None:
-            self._ignore_regions = self.ground_truth(scene, ['ignored'])
+            try:
+                self._ignore_regions = self.ground_truth(scene, ['ignored'])
+            except OSError:
+                self._ignore_regions = defaultdict(list)
         return self._ignore_regions
 
 
