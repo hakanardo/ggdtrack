@@ -123,5 +123,7 @@ if __name__ == '__main__':
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000086_00000_v_00000001.pck")))
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000182_00000_v"),
     #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000182_00000_v_00000001.pck")))
-    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000268_05773_v"),
-                interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck")))
+    # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000268_05773_v"),
+    #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck")))
+    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000117_02622_v"),
+                interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000117_02622_v_00000001.pck")))

@@ -42,6 +42,7 @@ class VisDrone(Dataset):
             'test': self._list_scenes('test-challenge'),
         }
         self.class_indexes = set([self.class_names.index(c) for c in class_set])
+        self._ignore_regions = None
 
     def _list_scenes(self, part):
         seqs = os.listdir(os.path.join(self.base_path, 'VisDrone2019-MOT-' + part, 'sequences'))
@@ -61,11 +62,15 @@ class VisDrone(Dataset):
     def detections(self, scene, start_frame=1, stop_frame=float('Inf')):
         raise NotImplementedError
 
-    def ground_truth(self, scene):
+    def ground_truth(self, scene, classes=None):
+        if classes is None:
+            class_indexes = self.class_indexes
+        else:
+            class_indexes = set([self.class_names.index(c) for c in classes])
         frames = defaultdict(list)
         fn = self._path(scene, 'annotations') + '.txt'
         for row in np.loadtxt(fn, delimiter=',', dtype=int):
-            if row[7] in self.class_indexes:
+            if row[7] in class_indexes:
                 det = Detection(row[0], row[2], row[3], row[2]+row[4], row[3]+row[5], None, row[1])
                 det.cls = row[7]
                 frames[det.frame].append(det)
@@ -84,6 +89,11 @@ class VisDrone(Dataset):
     def roi(self, scene):
         h, w, _ = self.frame(scene, 1).shape
         return [(0, 0), (0, h-1), (w-1, h), (w-1, 0)]
+
+    def ignore_regions(self, scene):
+        if self._ignore_regions is None:
+            self._ignore_regions = self.ground_truth(scene, ['ignored'])
+        return self._ignore_regions
 
 
 class VisDroneScene(Scene):
@@ -109,10 +119,11 @@ class VisDroneScene(Scene):
                     det = Detection(row[0], row[2], row[3], row[2]+row[4], row[3]+row[5], frow[6], did)
                     if self.dataset.scale != 1.0:
                         det = det.scale(self.dataset.scale)
-                    det.cls = row[7]
-                    det.scene = self
-                    detections[det.frame].append(det)
-                    did += 1
+                    if not self.should_ignore(det):
+                        det.cls = row[7]
+                        det.scene = self
+                        detections[det.frame].append(det)
+                        did += 1
             for dets in detections.values():
                 dets[:] = nms(dets)
             self._detections = detections
@@ -122,4 +133,14 @@ class VisDroneScene(Scene):
         for f in range(start_frame, stop_frame + 1):
             for det in self._detections[f]:
                 yield det
+
+    def ignore_regions(self):
+        return self.dataset.ignore_regions(self.name)
+
+    def should_ignore(self, det):
+        for ignore in self.ignore_regions()[det.frame]:
+            if det.ioa(ignore) > 0.5:
+                return True
+        return False
+
 
