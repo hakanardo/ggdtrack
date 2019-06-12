@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-motas = defaultdict(list)
+idf1s = defaultdict(list)
 times = defaultdict(list)
 for fn in glob("cachedir/logdir_?.*_??/eval_results_int.txt"):
     amount = float(fn.split('_')[1])
@@ -16,13 +16,13 @@ for fn in glob("cachedir/logdir_?.*_??/eval_results_int.txt"):
     ts1 = stat(snapshots[-1]).st_mtime_ns / 1e9
     train_time = (ts1 - ts0) / (len(snapshots) - 1) * len(snapshots)
     res_int = open(fn).read()
-    mota = float(re.split(r'\s+', res_int.split('\n')[-1])[4].replace('%', ''))
-    motas[amount].append(mota)
+    idf1 = float(re.split(r'\s+', res_int.split('\n')[-1])[1].replace('%', ''))
+    idf1s[amount].append(idf1)
     times[amount].append(train_time)
 
 data = []
-for amount in sorted(motas.keys()):
-    mm = motas[amount]
+for amount in sorted(idf1s.keys()):
+    mm = idf1s[amount]
     tt = times[amount]
     data.append((amount, np.mean(mm), np.std(mm), np.mean(tt),
                  np.median(mm), np.quantile(mm, 0.10), np.quantile(mm, 0.90)))
@@ -44,12 +44,12 @@ color2 = '#6b406e'
 # ax2.plot(data[:, 0], data[:, 1], '-', color=color2)
 # ax2.plot(data[:, 0], data[:, 1] - 2 * data[:, 2], '--', color=color2)
 # ax2.plot(data[:, 0], data[:, 1] + 2 * data[:, 2], '--', color=color2)
-ax2.plot(data[:, 0], data[:, 4], '-', color=color2, label="Median MOTA Score")
-ax2.plot(data[:, 0], data[:, 5], '--', color=color2, label="10 % Quantile MOTA Score")
-ax2.plot(data[:, 0], data[:, 6], '--', color=color2, label="90 % Quantile MOTA Score")
+ax2.plot(data[:, 0], data[:, 4], '-', color=color2, label="Median IDF1 Score")
+ax2.plot(data[:, 0], data[:, 5], '--', color=color2, label="10 % Quantile IDF1 Score")
+ax2.plot(data[:, 0], data[:, 6], '--', color=color2, label="90 % Quantile IDF1 Score")
 # ax2.plot([min(data[:,0]), 1], [83.4, 83.4], ':', color=color2, label="Ground truth tracks")
 ax2.set_xlabel('Amount of training data used')
-ax2.set_ylabel('MOTA', color=color2)
+ax2.set_ylabel('IDF1', color=color2)
 ax2.tick_params('y', colors=color2)
 ax2.legend(loc='center')
 
