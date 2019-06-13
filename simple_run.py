@@ -21,33 +21,29 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--segment-length", default=10, type=int, help="The length in seconds of video used for each garph")
 @click.option("--cachedir", default="cachedir", help="Directory into which intermediate results are cached between runs")
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
-def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence):
+@click.option("--fold", default=0, type=int, help="Minimal confidense of detection to consider")
+def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold):
     # dataset = eval(dataset)(datadir, cachedir=cachedir, default_min_conf=minimal_confidence)
     # dataset.download()
     # dataset.prepare()
 
-    for fold in range(4):
-        dataset = Mot16(datadir, cachedir=cachedir, default_min_conf=minimal_confidence, fold=fold)
-        # prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length)
+    dataset = Mot16(datadir, cachedir=cachedir, default_min_conf=minimal_confidence, fold=fold)
+    model = NNModelSimple()
 
-        model = NNModelSimple()
-        # prep_minimal_graph_diffs(dataset, model, threads=threads)
+    prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length)
+    prep_minimal_graph_diffs(dataset, model, threads=threads)
+    prep_eval_graphs(dataset, model, threads=threads)
+    train_graphres_minimal(dataset, model)
+    prep_eval_tracks(dataset, model, 'eval') #, threads=1)
 
-        # prep_eval_graphs(dataset, model, threads=threads)
-
-        train_graphres_minimal(dataset, model)
-
-        prep_eval_tracks(dataset, model, 'eval', threads=1)
-        res, res_int = eval_prepped_tracks(dataset, 'eval')
-        open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
-        open(os.path.join(dataset.logdir, "eval_results_int.txt"), "w").write(res_int)
-        # eval_prepped_tracks_csv(dataset, 'eval')
-        #
-        # prep_eval_tracks(dataset, model, 'test', threads=1)
-        # eval_prepped_tracks_csv(dataset, 'test')
-        # dataset.prepare_submition()
-
-        break
+    res, res_int = eval_prepped_tracks(dataset, 'eval')
+    open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
+    open(os.path.join(dataset.logdir, "eval_results_int.txt"), "w").write(res_int)
+    # eval_prepped_tracks_csv(dataset, 'eval')
+    #
+    # prep_eval_tracks(dataset, model, 'test', threads=1)
+    # eval_prepped_tracks_csv(dataset, 'test')
+    # dataset.prepare_submition()
 
 
 if __name__ == '__main__':

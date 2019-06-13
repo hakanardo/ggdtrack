@@ -266,6 +266,7 @@ class NormalizedModel(nn.Module):
             x *= self.feature_mask
         return self.net(x)
 
+class Dummy: pass
 
 class NNModelSimple(NNModel):
     detecton_feature_length = 1
@@ -278,9 +279,10 @@ class NNModelSimple(NNModel):
         self.entry_weight_parameter = nn.Parameter(torch.Tensor([0]))
         self.detection_model = NormalizedModel(self.detecton_feature_length,
                                                [nn.Linear(self.detecton_feature_length, 1)])
-        self.edge_model = NormalizedModel(self.klt_feature_length,
-                                        [nn.Linear(self.klt_feature_length, 1)])
-        self.edge_model.klt_model = self.edge_model # FIXME: Move mean estimation into model and kill this hack
+        edge_model = NormalizedModel(self.klt_feature_length,
+                                     [nn.Linear(self.klt_feature_length, 1)])
+        self.edge_model = Dummy() # FIXME: Move mean estimation into model and kill this hack
+        self.edge_model.klt_model = edge_model
         self.edge_model.long_model = None
 
     def forward(self, batch):
@@ -288,7 +290,7 @@ class NNModelSimple(NNModel):
         if batch.detection.nelement() > 0:
             s += self.detection_model(batch.detection).sum()
         for e in batch.edge:
-            s += self.edge_model(e)
+            s += self.edge_model.klt_model(e)
         return s
 
     def ggd_batch_forward(self, batch):
@@ -306,7 +308,7 @@ class NNModelSimple(NNModel):
     def connection_batch_forward(self, batch):
         if len(batch.long_idx) == 1 and len(batch.klt_idx) == 1:
             return torch.tensor([])
-        klt_scores = self.edge_model(batch.klt_data)
+        klt_scores = self.edge_model.klt_model(batch.klt_data)
         klt_scores = idx_sum(klt_scores, batch.klt_idx, 1)
         return klt_scores
 

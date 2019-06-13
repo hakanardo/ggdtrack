@@ -54,6 +54,10 @@ class Mot16(Dataset):
     def frame(self, scene, frame):
         return imread(self._path(scene, "img1/%.6d.jpg" % frame))
 
+    def roi(self, scene):
+        h, w, _ = self.frame(scene, 1).shape
+        return [(0, 0), (0, h-1), (w-1, h), (w-1, 0)]
+
 
 class Mot16Scene(Scene):
     def __init__(self, dataset, name):

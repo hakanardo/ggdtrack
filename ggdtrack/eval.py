@@ -144,7 +144,7 @@ class MotMetrics:
 
     def summary(self):
         mh = motmetrics.metrics.create()
-        summary= mh.compute_many(self.accumulators, metrics=['idf1', 'idp', 'idr', 'mota', 'motp', 'num_frames'],
+        summary= mh.compute_many(self.accumulators, metrics=['idf1', 'idp', 'idr', 'mota', 'motp', 'num_frames', 'num_switches', 'num_fragmentations', 'mostly_tracked', 'partially_tracked', 'mostly_lost'],
                                names=self.names, generate_overall=self.overall)
         return motmetrics.io.render_summary(
             summary,
