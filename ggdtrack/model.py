@@ -12,11 +12,15 @@ class DetectionModel(nn.Module):
                                  nn.Linear(32, 1))
         self.register_buffer('mean', torch.zeros(features))
         self.register_buffer('std', torch.ones(features))
+        self.register_buffer('feature_mask', None)
 
     def forward(self, x):
         if x.shape[0] == 0:
             return torch.zeros((0,), device=x.device)
-        return self.net((x - self.mean) / self.std)
+        x = (x - self.mean) / self.std
+        if self.feature_mask is not None:
+            x *= self.feature_mask
+        return self.net(x)
 
 class KltEdgeModel(nn.Module):
     def __init__(self, features):
@@ -30,11 +34,15 @@ class KltEdgeModel(nn.Module):
                                  nn.Linear(64, 64), nn.ReLU())
         self.register_buffer('mean', torch.zeros(features))
         self.register_buffer('std', torch.ones(features))
+        self.register_buffer('feature_mask', None)
 
     def forward(self, x):
         if x.shape[0] == 0:
             return torch.zeros((0,), device=x.device)
-        return self.net((x - self.mean) / self.std)
+        x = (x - self.mean) / self.std
+        if self.feature_mask is not None:
+            x *= self.feature_mask
+        return self.net(x)
 
 class LongEdgeModel(nn.Module):
     def __init__(self, features):
@@ -49,11 +57,15 @@ class LongEdgeModel(nn.Module):
                                  # nn.Linear(64, 1))
         self.register_buffer('mean', torch.zeros(features))
         self.register_buffer('std', torch.ones(features))
+        self.register_buffer('feature_mask', None)
 
     def forward(self, x):
         if x.shape[0] == 0:
             return torch.zeros((0,), device=x.device)
-        return self.net((x - self.mean) / self.std)
+        x = (x - self.mean) / self.std
+        if self.feature_mask is not None:
+            x *= self.feature_mask
+        return self.net(x)
 
 class LongKltEdgeModelMean(nn.Module):
     def __init__(self, klt_feature_length, long_feature_length):
