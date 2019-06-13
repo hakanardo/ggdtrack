@@ -1,6 +1,5 @@
 from vi3o.image import imview, view
 
-
 def show_gt(scene):
     gt_frames = scene.ground_truth()
     for f in sorted(gt_frames.keys()):
@@ -40,6 +39,7 @@ def show_gt_and_detections(scene):
 if __name__ == '__main__':
     from ggdtrack.visdrone_dataset import VisDrone
     from ggdtrack.duke_dataset import Duke
+    from ggdtrack.mot16_dataset import Mot16
     from ggdtrack.klt_det_connect import video_detections
 
     # show_gt(Duke("/home/hakan/src/duke").scene(1))
@@ -53,4 +53,8 @@ if __name__ == '__main__':
     # show_gt(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('car','bus','truck','pedestrian','van')).scene("val__uav0000117_02622_v"))
     # show_detections(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000117_02622_v"), 1, 1000))
     # show_gt_and_detections(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('ignored', 'car','bus','truck','pedestrian','van')).scene("val__uav0000117_02622_v"))
-    show_gt_and_detections(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('ignored', 'car','bus','truck','pedestrian','van')).scene("val__uav0000268_05773_v"))
+    # show_gt_and_detections(VisDrone('/home/hakan/src/ggdtrack/data/', class_set=('ignored', 'car','bus','truck','pedestrian','van')).scene("val__uav0000268_05773_v"))
+
+    # show_gt(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-02'))
+    show_detections(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-05'), 1, 1000))
+

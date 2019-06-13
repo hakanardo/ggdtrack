@@ -6,21 +6,8 @@ from glob import glob
 from vi3o import view
 from vi3o.image import imread, imview, imscale
 
-from ggdtrack.dataset import Detection, Dataset, Scene
+from ggdtrack.dataset import Detection, Dataset, Scene, nms
 import numpy as np
-
-
-def nms(detections):
-    detections.sort(key=lambda d: d.confidence, reverse=True)
-    selected = []
-    for det in detections:
-        for old in selected:
-            if old.iou(det) > 0.3:
-                break
-        else:
-            selected.append(det)
-    return selected
-
 
 
 class VisDrone(Dataset):

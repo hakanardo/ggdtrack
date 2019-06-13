@@ -214,3 +214,15 @@ def ground_truth_tracks(gt_frames, graph, iou_threshold=0.3):
         tr.sort(key=lambda d: d.frame)
 
     return gt_tracks, graph_frames
+
+
+def nms(detections):
+    detections.sort(key=lambda d: d.confidence, reverse=True)
+    selected = []
+    for det in detections:
+        for old in selected:
+            if old.iou(det) > 0.3:
+                break
+        else:
+            selected.append(det)
+    return selected

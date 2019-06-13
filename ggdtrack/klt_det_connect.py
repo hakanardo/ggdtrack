@@ -236,7 +236,8 @@ def prep_training_graphs_worker(arg):
     return part, (graph_name, scene.name)
 
 
-def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None):
+def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None,
+                         worker=prep_training_graphs_worker):
     lsts = {n: [] for n in dataset.parts.keys()}
     jobs = []
     for part in lsts.keys():
@@ -260,7 +261,7 @@ def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, s
         jobs = [j for j in jobs if j[4] != 'test']
         jobs = jobs[:limit]
 
-    for part, entry in parallel(prep_training_graphs_worker, jobs, threads, 'Preppping training graphs'):
+    for part, entry in parallel(worker, jobs, threads, 'Preppping training graphs'):
         lsts[part].append(entry)
         save_json(lsts, os.path.join(cachedir, "graphs", "%s_traineval.json" % dataset.name))
 
