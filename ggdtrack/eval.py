@@ -51,11 +51,16 @@ def prep_eval_graph_worker(args):
                 edge_weight_features_long.append(long)
             d.prev = list(d.prev)
             detection_weight_features.append(model.detecton_weight_feature(d))
-            del d.max_intra_iou
-            del d.max_intra_ioa
-            del d.post_vs
-            del d.pre_vs
-            del d.next_weight_data
+            if hasattr(d, 'max_intra_iou'):
+                del d.max_intra_iou
+            if hasattr(d, 'max_intra_ioa'):
+                del d.max_intra_ioa
+            if hasattr(d, 'post_vs'):
+                del d.post_vs
+            if hasattr(d, 'pre_vs'):
+                del d.pre_vs
+            if hasattr(d, 'next_weight_data'):
+                del d.next_weight_data
         assert len(edge_weight_features_klt) == len(edge_weight_features_long)
         detection_weight_features = torch.tensor(detection_weight_features)
         connection_batch = ConnectionBatch(torch.tensor(edge_weight_features_klt.index.data),

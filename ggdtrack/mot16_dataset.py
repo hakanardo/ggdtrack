@@ -17,7 +17,10 @@ class Mot16(Dataset):
             self.default_min_conf = 0
         trainval = self._list_scenes('train')
         trainval.sort()
-        eval = [trainval.pop(2*fold), trainval.pop(2*fold)]
+        if fold == 3:
+            eval = [trainval.pop(-1)]
+        else:
+            eval = [trainval.pop(2*fold), trainval.pop(2*fold)]
         self.parts = {
             'train': trainval,
             'eval': eval,
@@ -92,5 +95,6 @@ class Mot16Scene(Scene):
 
 
 if __name__ == '__main__':
-    data = Mot16('data')
-    print(data.scene('train__MOT16-02').fps)
+    data = Mot16('data', fold=0)
+    print(data.parts['train'])
+    # print(data.scene('train__MOT16-02').fps)

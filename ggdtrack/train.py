@@ -7,7 +7,6 @@ import time
 import numpy as np
 
 import torch
-from networkx.generators.random_graphs import _random_subset
 from tensorboardX import SummaryWriter
 from torch import nn, optim
 from torch.utils.data import DataLoader
