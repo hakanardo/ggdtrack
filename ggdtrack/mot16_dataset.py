@@ -41,7 +41,7 @@ class Mot16(Dataset):
         for row in np.loadtxt(self._path(scene, "gt/gt.txt"), delimiter=','):
             if row[0] < 1 or row[6] == 0 or row[7] != 1:
                 continue
-            det = Detection(row[0], row[2], row[3], row[2]+row[4], row[3]+row[5], None, int(row[1]))
+            det = Detection(int(row[0]), row[2], row[3], row[2]+row[4], row[3]+row[5], None, int(row[1]))
             frames[det.frame].append(det)
         return frames
 
@@ -74,7 +74,7 @@ class Mot16Scene(Scene):
                 if row[0] < 1 or row[6] == 0:
                     print(row[0], row[6], row[7])
                     continue
-                det = Detection(row[0], row[2], row[3], row[2]+row[4], row[3]+row[5], row[6], did)
+                det = Detection(int(row[0]), row[2], row[3], row[2]+row[4], row[3]+row[5], row[6], did)
                 det.scene = self
                 detections[det.frame].append(det)
                 did += 1

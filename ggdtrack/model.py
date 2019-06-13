@@ -248,3 +248,62 @@ def idx_sum(scores, idx, width):
     scores = torch.cumsum(scores, 0)
     scores = scores[idx]
     return scores[1:] - scores[:-1]
+
+
+class NNModelSimple(NNModel):
+    detecton_feature_length = 1
+    klt_feature_length = 8
+    long_feature_length = 0
+    feature_name = 'simple'
+
+    def __init__(self):
+        nn.Module.__init__(self)
+        self.entry_weight_parameter = nn.Parameter(torch.Tensor([0]))
+        self.detection_model = nn.Sequential(nn.Linear(self.detecton_feature_length, 1))
+        self.edge_model = nn.Sequential(nn.Linear(self.klt_feature_length, 1))
+
+    def forward(self, batch):
+        s = self.entry_weight_parameter * batch.entries
+        if batch.detection.nelement() > 0:
+            s += self.detection_model(batch.detection).sum()
+        for e in batch.edge:
+            s += self.edge_model(e)
+        return s
+
+    def ggd_batch_forward(self, batch):
+        edge_scores = self.connection_batch_forward(batch) * batch.edge_signs
+        edge_scores = idx_sum(edge_scores, batch.edge_idx, 1)
+        if batch.detection_signs.nelement() == 0:
+            detection_scores = torch.zeros((len(batch.detection_idx) - 1, 1))
+        else:
+            detection_scores = batch.detection_signs * self.detection_model(batch.detections)
+            detection_scores = idx_sum(detection_scores, batch.detection_idx, 1)
+
+        entry_score = batch.entry_diffs * self.entry_weight_parameter
+        return edge_scores + detection_scores + entry_score.reshape(-1,1)
+
+    def connection_batch_forward(self, batch):
+        if len(batch.long_idx) == 1 and len(batch.klt_idx) == 1:
+            return torch.tensor([])
+        klt_scores = self.edge_model(batch.klt_data)
+        klt_scores = idx_sum(klt_scores, batch.klt_idx, 1)
+        return klt_scores
+
+    def eval(self):
+        nn.Module.eval(self)
+        self.entry_weight = self.entry_weight_parameter.item()
+
+    def train(self, mode=True):
+        nn.Module.train(self)
+        if mode and hasattr(self, 'entry_weight'):
+            del self.entry_weight
+
+    @staticmethod
+    def detecton_weight_feature(det):
+        return (det.confidence,)
+
+    @staticmethod
+    def connection_weight_feature(det, nxt):
+        f =  [det.left - nxt.left, det.top - nxt.top, det.right - nxt.right, det.bottom - nxt.bottom]
+        f += [det.confidence, nxt.confidence, (nxt.frame - det.frame), det.iou(nxt)]
+        return np.array([f]), np.zeros((0,0))
