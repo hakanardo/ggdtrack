@@ -11,6 +11,7 @@ class Mot16(Dataset):
 
     def __init__(self, path, cachedir=None, logdir=None, default_min_conf=None, fold=0):
         assert 0 <= fold <=3
+        self.name = 'MOT16_fold%d' % fold
         Dataset.__init__(self, cachedir, logdir)
         self.base_path = os.path.join(path, "MOT16")
         if default_min_conf is None:
@@ -26,7 +27,6 @@ class Mot16(Dataset):
             'eval': eval,
             'test': self._list_scenes('test'),
         }
-        self.name = 'MOT16_fold%d' % fold
 
     def _list_scenes(self, part):
         seqs = os.listdir(os.path.join(self.base_path, part))

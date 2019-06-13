@@ -118,14 +118,17 @@ def show_tracks(scene, tracks, frame_dets=(), first_frame=None):
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.visdrone_dataset import VisDrone
+    from ggdtrack.mot16_dataset import Mot16
     from ggdtrack.utils import load_pickle, default_torch_device, promote_graph
 
     # show_tracks(Duke('/home/hakan/src/duke').scene(3), interpolate_missing_detections(load_pickle("tracks/duke_graph_3_00190415.pck")))
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000086_00000_v_00000001.pck")))
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000182_00000_v"),
     #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000182_00000_v_00000001.pck")))
-    show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000268_05773_v"),
-                interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck")),
-                first_frame=500)
+    # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000268_05773_v"),
+    #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck")),
+    #             first_frame=500)
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000117_02622_v"),
     #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000117_02622_v_00000001.pck")))
+    show_tracks(Mot16('/home/hakan/src/ggdtrack/data/').scene("train__MOT16-04"),
+                interpolate_missing_detections(load_pickle("cachedir/tracks/MOT16_fold0_graph_train__MOT16-04_00000001.pck")))

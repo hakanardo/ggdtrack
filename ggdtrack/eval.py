@@ -122,7 +122,7 @@ class MotMetrics:
             return
         acc = motmetrics.MOTAccumulator()
         self.accumulators.append(acc)
-        self.names.append(name)
+        self.names.append(name.split('.')[0][-40:])
         self.update(tracks, gt_frames)
 
     def update(self, tracks, gt_frames):
@@ -144,7 +144,10 @@ class MotMetrics:
 
     def summary(self):
         mh = motmetrics.metrics.create()
-        summary= mh.compute_many(self.accumulators, metrics=['idf1', 'idp', 'idr', 'mota', 'motp', 'num_frames', 'num_switches', 'num_fragmentations', 'mostly_tracked', 'partially_tracked', 'mostly_lost'],
+        # metrics = ['idf1', 'idp', 'idr', 'mota', 'motp', 'num_frames']
+        # metrics = ['idf1', 'idp', 'idr', 'mota', 'motp', 'num_frames', 'num_switches', 'num_fragmentations', 'mostly_tracked', 'partially_tracked', 'mostly_lost']
+        metrics = ['mota', 'num_switches', 'num_fragmentations', 'mostly_tracked', 'partially_tracked', 'mostly_lost', 'num_frames']
+        summary= mh.compute_many(self.accumulators, metrics=metrics,
                                names=self.names, generate_overall=self.overall)
         return motmetrics.io.render_summary(
             summary,
@@ -333,13 +336,14 @@ def eval_hamming(dataset, logdir, model, device=default_torch_device):
     return hamming
 
 def prep_eval_gt_tracks_worker(args):
-    model, name, scene, cachedir = args
+    model, name, scene, cachedir, split_on_no_edge = args
     ofn = os.path.join(cachedir, "tracks", os.path.basename(name))
 
     graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
     promote_graph(graph)
-    gt_tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
-    tracks = split_track_on_missing_edge(gt_tracks)
+    tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+    if split_on_no_edge:
+        tracks = split_track_on_missing_edge(tracks)
     for tr in tracks:
         for det in tr:
             det.__dict__ = {}
@@ -347,9 +351,10 @@ def prep_eval_gt_tracks_worker(args):
 
     return ofn
 
-def prep_eval_gt_tracks(dataset, model, part='eval', threads=None):
+def prep_eval_gt_tracks(dataset, model, part='eval', threads=None, split_on_no_edge=False):
     limit = graph_names(dataset, part)
-    jobs = [(model, name, dataset.scene(cam), dataset.cachedir) for name, cam in limit]
+    jobs = [(model, name, dataset.scene(cam), dataset.cachedir, split_on_no_edge)
+            for name, cam in limit]
     shuffle(jobs)
     parallel_run(prep_eval_gt_tracks_worker, jobs, threads, "Prepping eval tracks for %s" % part)
 

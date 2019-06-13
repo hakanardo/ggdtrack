@@ -39,15 +39,15 @@ def make_graph(video_detections, fps, show=False):
         for old_detections in history:
             for prv in old_detections:
                 for nxt in detections:
-                    if det.iou(prv) > min_iou:
+                    if nxt.iou(prv) > min_iou:
                         connect(prv, nxt, None)
         history.append(detections)
 
         if show:
-            view(frame)
+            view(frame, pause=True)
 
     return graph
 
 if __name__ == '__main__':
     from ggdtrack.mot16_dataset import Mot16
-    make_graph(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-05'), 1, 200), 25, True)
+    make_graph(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-04'), 1, 200), 25, True)

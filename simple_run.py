@@ -7,7 +7,8 @@ import os
 
 import click
 
-from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_csv
+from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_csv, \
+    prep_eval_gt_tracks
 from ggdtrack.graph_diff import prep_minimal_graph_diffs
 from ggdtrack.mot16_dataset import Mot16
 from ggdtrack.simple_det_connect import prep_training_graphs
@@ -34,7 +35,9 @@ def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, 
     prep_minimal_graph_diffs(dataset, model, threads=threads)
     prep_eval_graphs(dataset, model, threads=threads)
     train_graphres_minimal(dataset, model)
-    prep_eval_tracks(dataset, model, 'eval') #, threads=1)
+
+    prep_eval_tracks(dataset, model, 'eval')
+    # prep_eval_gt_tracks(dataset, model, 'eval', split_on_no_edge=True)
 
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
