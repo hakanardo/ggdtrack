@@ -250,6 +250,23 @@ def idx_sum(scores, idx, width):
     return scores[1:] - scores[:-1]
 
 
+class NormalizedModel(nn.Module):
+    def __init__(self, features, layers):
+        nn.Module.__init__(self)
+        self.net = nn.Sequential(*layers)
+        self.register_buffer('mean', torch.zeros(features))
+        self.register_buffer('std', torch.ones(features))
+        self.register_buffer('feature_mask', None)
+
+    def forward(self, x):
+        if x.shape[0] == 0:
+            return torch.zeros((0,), device=x.device)
+        x = (x - self.mean) / self.std
+        if self.feature_mask is not None:
+            x *= self.feature_mask
+        return self.net(x)
+
+
 class NNModelSimple(NNModel):
     detecton_feature_length = 1
     klt_feature_length = 8
@@ -259,8 +276,12 @@ class NNModelSimple(NNModel):
     def __init__(self):
         nn.Module.__init__(self)
         self.entry_weight_parameter = nn.Parameter(torch.Tensor([0]))
-        self.detection_model = nn.Sequential(nn.Linear(self.detecton_feature_length, 1))
-        self.edge_model = nn.Sequential(nn.Linear(self.klt_feature_length, 1))
+        self.detection_model = NormalizedModel(self.detecton_feature_length,
+                                               [nn.Linear(self.detecton_feature_length, 1)])
+        self.edge_model = NormalizedModel(self.klt_feature_length,
+                                        [nn.Linear(self.klt_feature_length, 1)])
+        self.edge_model.klt_model = self.edge_model # FIXME: Move mean estimation into model and kill this hack
+        self.edge_model.long_model = None
 
     def forward(self, batch):
         s = self.entry_weight_parameter * batch.entries

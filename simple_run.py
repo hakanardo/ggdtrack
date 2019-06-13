@@ -28,12 +28,12 @@ def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence):
 
     for fold in range(4):
         dataset = Mot16(datadir, cachedir=cachedir, default_min_conf=minimal_confidence, fold=fold)
-        prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length)
+        # prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length)
 
         model = NNModelSimple()
-        prep_minimal_graph_diffs(dataset, model, threads=threads)
+        # prep_minimal_graph_diffs(dataset, model, threads=threads)
 
-        prep_eval_graphs(dataset, model, threads=threads)
+        # prep_eval_graphs(dataset, model, threads=threads)
 
         train_graphres_minimal(dataset, model)
 

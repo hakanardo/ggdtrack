@@ -127,8 +127,9 @@ def train_graphres_minimal(dataset, model, device=default_torch_device, limit=No
         model.detection_model.std = torch.sqrt(det_stats.var)
         model.edge_model.klt_model.mean = edge_klt_stats.mean
         model.edge_model.klt_model.std = torch.sqrt(edge_klt_stats.var)
-        model.edge_model.long_model.mean = edge_long_stats.mean
-        model.edge_model.long_model.std = torch.sqrt(edge_long_stats.var)
+        if model.edge_model.long_model is not None:
+            model.edge_model.long_model.mean = edge_long_stats.mean
+            model.edge_model.long_model.std = torch.sqrt(edge_long_stats.var)
 
     save_count = 0
     start_time = last_save = time.time()
