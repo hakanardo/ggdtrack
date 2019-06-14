@@ -183,6 +183,30 @@ def eval_prepped_tracks(dataset, part='eval'):
     print(res_int)
     return res, res_int
 
+def eval_prepped_tracks_folds(datasets, part='eval'):
+    metrics = MotMetrics(True)
+    metrics_int = MotMetrics(True)
+    for dataset in datasets:
+        for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
+            scene = dataset.scene(cam)
+            gt_frames = scene.ground_truth()
+            tracks_name = os.path.join(dataset.cachedir, "tracks", os.path.basename(name))
+            tracks = load_pickle(tracks_name)
+            filter_out_non_roi_dets(scene, tracks)
+
+            metrics.add(tracks, gt_frames, name)
+            interpolate_missing_detections(tracks)
+            metrics_int.add(tracks, gt_frames, name + 'i')
+
+    res = metrics.summary()
+    res_int = metrics_int.summary()
+    print("Result")
+    print(res)
+    print("\nResult interpolated")
+    print(res_int)
+    return res, res_int
+
+
 def eval_prepped_tracks_csv(dataset, part='eval'):
     logdir = dataset.logdir
     base = '%s/result_%s_%s' % (logdir, dataset.name, part)

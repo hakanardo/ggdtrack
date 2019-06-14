@@ -130,5 +130,7 @@ if __name__ == '__main__':
     #             first_frame=500)
     # show_tracks(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000117_02622_v"),
     #             interpolate_missing_detections(load_pickle("cachedir/tracks/VisDrone_graph_val__uav0000117_02622_v_00000001.pck")))
-    show_tracks(Mot16('/home/hakan/src/ggdtrack/data/').scene("train__MOT16-04"),
-                interpolate_missing_detections(load_pickle("cachedir/tracks/MOT16_fold0_graph_train__MOT16-04_00000001.pck")))
+    # show_tracks(Mot16('/home/hakan/src/ggdtrack/data/').scene("train__MOT16-04"),
+    #             interpolate_missing_detections(load_pickle("cachedir/tracks/MOT16_fold0_graph_train__MOT16-04_00000001.pck")))
+    show_tracks(Mot16('/home/hakan/src/ggdtrack/data/', fold=3).scene("train__MOT16-13"),
+                interpolate_missing_detections(load_pickle("cachedir/tracks/MOT16_fold3_graph_train__MOT16-13_00000001.pck")))

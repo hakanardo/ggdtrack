@@ -11,7 +11,7 @@ dataset = Mot16('/home/hakan/src/ggdtrack/data/')
 scene = dataset.scene("train__MOT16-04"),
 tracks = load_pickle("cachedir/tracks/MOT16_fold0_graph_train__MOT16-04_00000001.pck")
 tr1 = tracks[12]
-tr2 = tracks[35]
+tr2 = tracks[31]
 
 model = NNModelSimple()
 fn = sorted(glob("%s/snapshot_???.pyt" % dataset.logdir))[-1]
@@ -25,8 +25,6 @@ def sum_connection_weights(tr):
         d1, d2 = tr[i], tr[i+1]
         f = torch.tensor(model.connection_weight_feature(d1, d2)[0].astype(np.float32))
         sa += model.edge_model.klt_model(f)
-        print(sa)
-        exit()
     return sa
 
 def sum_detection_weights(tr):
@@ -36,9 +34,19 @@ def sum_detection_weights(tr):
         sa += model.detection_model(f)
     return sa
 
-# d1 = sum_detection_weights(tr1).item()
-# d2 = sum_detection_weights(tr2).item()
+d1 = sum_detection_weights(tr1).item()
+d2 = sum_detection_weights(tr2).item()
 c1 = sum_connection_weights(tr1).item()
 c2 = sum_connection_weights(tr2).item()
-print(d1, '+', c1, '=', d1 + c1)
-print(d2, '+', c2, '=', d2 + c2)
+print('tr1', d1, '+', c1, '=', d1 + c1)
+print('tr2', d2, '+', c2, '=', d2 + c2)
+print('   ', d1+d2, '+', c1+c2, '=', d1+d2 + c1+c2)
+
+tr = tr1 + tr2
+tr.sort(key=lambda d: d.frame)
+for i in range(len(tr) - 1):
+    if tr[i].frame == tr[i+1].frame:
+        print("Overlap!!")
+d = sum_detection_weights(tr).item()
+c = sum_connection_weights(tr).item()
+print('tr ', d, '+', c, '=', d + c)
