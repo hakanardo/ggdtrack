@@ -24,7 +24,7 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
 @click.option("--fold", default=0, type=int)
 @click.option("--model", default="NNModelSimple")
-@click.option("--evalgt", default=False)
+@click.option("--evalgt", default=False, is_flagg=True)
 def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, model, evalgt):
     # dataset = eval(dataset)(datadir, cachedir=cachedir, default_min_conf=minimal_confidence)
     # dataset.download()
