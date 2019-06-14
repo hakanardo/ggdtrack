@@ -338,10 +338,10 @@ class NNModelSimple(NNModel):
 class NNModelSimpleMLP1(NNModelSimple):
     def make_edge_model_net(self):
         return [nn.Linear(self.klt_feature_length, 64), nn.ReLU(),
-                nn.Linear(self.klt_feature_length, 1)]
+                nn.Linear(64, 1)]
 
 class NNModelSimpleMLP2(NNModelSimple):
     def make_edge_model_net(self):
         return [nn.Linear(self.klt_feature_length, 32), nn.ReLU(),
-                nn.Linear(self.klt_feature_length, 32), nn.ReLU(),
-                nn.Linear(self.klt_feature_length, 1)]
+                nn.Linear(32, 32), nn.ReLU(),
+                nn.Linear(32, 1)]
