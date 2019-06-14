@@ -184,7 +184,7 @@ class Scene:
         return self.dataset.class_names
 
 
-def ground_truth_tracks(gt_frames, graph, iou_threshold=0.3):
+def ground_truth_tracks(gt_frames, graph, iou_threshold=0.5):
     graph_frames = defaultdict(list)
     for det in graph:
         graph_frames[det.frame].append(det)
