@@ -105,7 +105,7 @@ def prep_eval_tracks(dataset, model, part='eval', device=default_torch_device, t
 
     if limit is None:
         limit = graph_names(dataset, part)
-    jobs = [(model, name, device, dataset.cachedir) for name, cam in limit]
+    jobs = [(model, name, device, dataset.logdir) for name, cam in limit]
     shuffle(jobs)
 
     parallel_run(prep_eval_tracks_worker, jobs, threads, "Prepping eval tracks for %s" % part)
@@ -167,7 +167,7 @@ def eval_prepped_tracks(dataset, part='eval'):
     for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
         scene = dataset.scene(cam)
         gt_frames = scene.ground_truth()
-        tracks_name = os.path.join(dataset.cachedir, "tracks", os.path.basename(name))
+        tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
         tracks = load_pickle(tracks_name)
         filter_out_non_roi_dets(scene, tracks)
 

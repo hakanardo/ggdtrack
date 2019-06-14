@@ -12,7 +12,7 @@ from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_track
 from ggdtrack.graph_diff import prep_minimal_graph_diffs
 from ggdtrack.mot16_dataset import Mot16
 from ggdtrack.simple_det_connect import prep_training_graphs
-from ggdtrack.model import NNModelSimple
+from ggdtrack.model import NNModelSimple, NNModelSimpleMLP1, NNModelSimpleMLP2
 from ggdtrack.train import train_graphres_minimal
 
 @click.command()
@@ -22,14 +22,16 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--segment-length", default=10, type=int, help="The length in seconds of video used for each garph")
 @click.option("--cachedir", default="cachedir", help="Directory into which intermediate results are cached between runs")
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
-@click.option("--fold", default=0, type=int, help="Minimal confidense of detection to consider")
-def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold):
+@click.option("--fold", default=0, type=int)
+@click.option("--model", default="NNModelSimple")
+def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, model):
     # dataset = eval(dataset)(datadir, cachedir=cachedir, default_min_conf=minimal_confidence)
     # dataset.download()
     # dataset.prepare()
 
     dataset = Mot16(datadir, cachedir=cachedir, default_min_conf=minimal_confidence, fold=fold)
-    model = NNModelSimple()
+    dataset.logdir += '_' + model
+    model = eval(model)()
 
     prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length)
     prep_minimal_graph_diffs(dataset, model, threads=threads)

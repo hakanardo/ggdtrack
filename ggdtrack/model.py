@@ -279,12 +279,15 @@ class NNModelSimple(NNModel):
         self.entry_weight_parameter = nn.Parameter(torch.Tensor([0]))
         self.detection_model = NormalizedModel(self.detecton_feature_length,
                                                [nn.Linear(self.detecton_feature_length, 1)])
-        edge_model = NormalizedModel(self.klt_feature_length,
-                                     [nn.Linear(self.klt_feature_length, 1)])
+        edge_model = NormalizedModel(self.klt_feature_length, self.make_edge_model_net())
+
         self.edge_model = Dummy() # FIXME: Move mean estimation into model and kill this hack
         self.saved_edge_mode = edge_model # FIXME: Hack to make pytorch save the model
         self.edge_model.klt_model = edge_model
         self.edge_model.long_model = None
+
+    def make_edge_model_net(self):
+        return [nn.Linear(self.klt_feature_length, 1)]
 
     def forward(self, batch):
         s = self.entry_weight_parameter * batch.entries
@@ -331,3 +334,14 @@ class NNModelSimple(NNModel):
         f =  [det.left - nxt.left, det.top - nxt.top, det.right - nxt.right, det.bottom - nxt.bottom]
         f += [det.confidence, nxt.confidence, (nxt.frame - det.frame), det.iou(nxt)]
         return np.array([f]), np.zeros((0,0))
+
+class NNModelSimpleMLP1(NNModelSimple):
+    def make_edge_model_net(self):
+        return [nn.Linear(self.klt_feature_length, 64), nn.ReLU(),
+                nn.Linear(self.klt_feature_length, 1)]
+
+class NNModelSimpleMLP2(NNModelSimple):
+    def make_edge_model_net(self):
+        return [nn.Linear(self.klt_feature_length, 32), nn.ReLU(),
+                nn.Linear(self.klt_feature_length, 32), nn.ReLU(),
+                nn.Linear(self.klt_feature_length, 1)]
