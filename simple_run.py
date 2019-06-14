@@ -40,7 +40,7 @@ def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, 
 
     if evalgt:
         dataset.logdir += '_gt'
-        prep_eval_gt_tracks(dataset, model, 'eval', split_on_no_edge=True)
+        prep_eval_gt_tracks(dataset, model, 'eval', split_on_no_edge=False)
     else:
         train_graphres_minimal(dataset, model)
         prep_eval_tracks(dataset, model, 'eval', threads=1)
