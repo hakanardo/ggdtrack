@@ -9,6 +9,7 @@ import click
 
 from ggdtrack.duke_dataset import Duke
 from ggdtrack.visdrone_dataset import VisDrone
+from ggdtrack.mot16_dataset import Mot16
 from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_csv
 from ggdtrack.graph_diff import prep_minimal_graph_diffs
 from ggdtrack.klt_det_connect import prep_training_graphs
