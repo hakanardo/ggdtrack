@@ -282,6 +282,7 @@ class NNModelSimple(NNModel):
         edge_model = NormalizedModel(self.klt_feature_length,
                                      [nn.Linear(self.klt_feature_length, 1)])
         self.edge_model = Dummy() # FIXME: Move mean estimation into model and kill this hack
+        self.saved_edge_mode = edge_model # FIXME: Hack to make pytorch save the model
         self.edge_model.klt_model = edge_model
         self.edge_model.long_model = None
 

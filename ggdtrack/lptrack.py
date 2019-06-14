@@ -102,8 +102,8 @@ def show_tracks(scene, tracks, frame_dets=(), first_frame=None):
             if tr[0].frame <= f <= tr[-1].frame:
                 det = tr[bisect([det.frame for det in tr], f)-1]
                 assert det.frame == f # Did you interpolate_missing_detections(tracks)?
-                if hasattr(det, 'track_id'):
-                    label = '%s:%s' % (tr_id, det.track_id)
+                if det.id is not None:
+                    label = '%s:%s' % (tr_id, det.id)
                 else:
                     label = tr_id
                 det.draw(img, label=label)
