@@ -23,8 +23,12 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--segment-length", default=10, type=int, help="The length in seconds of video used for each garph")
 @click.option("--cachedir", default="cachedir", help="Directory into which intermediate results are cached between runs")
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
-def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence):
-    dataset = eval(dataset)(datadir, cachedir=cachedir, default_min_conf=minimal_confidence)
+@click.option("--fold", default=None, type=int)
+def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold):
+    opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
+    if fold is not None:
+        opts['fold'] = fold
+    dataset = eval(dataset)(datadir, **opts)
     dataset.download()
     dataset.prepare()
 
