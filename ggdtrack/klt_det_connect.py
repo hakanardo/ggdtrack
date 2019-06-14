@@ -290,6 +290,7 @@ def make_duke_test_video():
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.visdrone_dataset import VisDrone
+    from ggdtrack.mot16_dataset import Mot16
 
     # scene = Duke('/home/hakan/src/duke').scene(1)
     # make_graph(video_detections(scene, 124472, 100, 0), scene.fps, True, True)
@@ -305,4 +306,5 @@ if __name__ == '__main__':
 
     # make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), 1, 184), 25, True)
     # make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000137_00458_v"), 1, 10000), 25, True)
-    make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000279_00001_v"), 160, 10000), 25, True)
+    # make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000279_00001_v"), 160, 10000), 25, True)
+    make_graph(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'), 1, 1000), 25, True)

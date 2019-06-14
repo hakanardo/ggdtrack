@@ -113,7 +113,7 @@ class Detection(namedtuple('Detection', ['frame', 'left', 'top', 'right', 'botto
         return Detection(self.frame, self.left + dx, self.top + dy, self.right + dx, self.bottom + dy, self.confidence, self.id)
 
     def update_mask(self, mask):
-        mask[self.top:self.bottom, self.left:self.right] = 255
+        mask[int(self.top):int(self.bottom), int(self.left):int(self.right)] = 255
 
     def demote_state(self, indexes):
         if hasattr(self, '_box'):
