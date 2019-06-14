@@ -21,7 +21,7 @@ from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.lptrack import lp_track, interpolate_missing_detections, lp_track_weights
 from ggdtrack.mmap_array import VarHMatrixList
 from ggdtrack.utils import load_pickle, save_torch, parallel, default_torch_device, save_pickle, parallel_run, \
-    load_graph, demote_graph, promote_graph, single_example_passthrough, WorkerPool
+    load_graph, demote_graph, promote_graph, single_example_passthrough, WorkerPool, load_json
 
 
 class ConnectionBatch(namedtuple('ConnectionBatch', ['klt_idx', 'klt_data', 'long_idx', 'long_data'])):
@@ -117,24 +117,23 @@ class MotMetrics:
         self.overall = overall
         self.iou_threshold = iou_threshold
 
-    def add(self, tracks, gt_frames, name='test'):
+    def add(self, tracks, gt_frames, name='test', frame_range=None):
+        assert frame_range is not None
         if not tracks:
             return
         acc = motmetrics.MOTAccumulator()
         self.accumulators.append(acc)
         self.names.append(name.split('.')[0][-40:])
-        self.update(tracks, gt_frames)
+        self.update(tracks, gt_frames, frame_range)
 
-    def update(self, tracks, gt_frames):
+    def update(self, tracks, gt_frames, frame_range):
         track_frames = defaultdict(list)
         for i, tr in enumerate(tracks):
             for det in tr:
                 det.track_id = i
                 track_frames[det.frame].append(det)
-        frames = track_frames.keys()
-        frames = range(min(frames), max(frames)+1)
         acc = self.accumulators[-1]
-        for f in frames:
+        for f in frame_range:
             gt = [d for d in gt_frames[f]]
             id_gt = [d.id for d in gt]
             id_res = [d.track_id for d in track_frames[f]]
@@ -156,29 +155,34 @@ class MotMetrics:
             namemap=motmetrics.io.motchallenge_metric_names
         )
 
+
 def filter_out_non_roi_dets(scene, tracks):
     roi = Polygon(scene.roi())
     tracks[:] = [[det for det in tr if roi.contains(Point(det.cx, det.bottom))]
                  for tr in tracks]
     tracks[:] = [tr for tr in tracks if tr]
 
+
 def eval_prepped_tracks(dataset, part='eval'):
-    return eval_prepped_tracks_folds([dataset])
+    return eval_prepped_tracks_folds([dataset], part)
+
 
 def eval_prepped_tracks_folds(datasets, part='eval'):
     metrics = MotMetrics(True)
     metrics_int = MotMetrics(True)
     for dataset in datasets:
         for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
+            meta = load_json(name + '-meta.json')
+            frame_range = range(meta['first_frame'], meta['first_frame'] + meta['length'])
             scene = dataset.scene(cam)
             gt_frames = scene.ground_truth()
             tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
             tracks = load_pickle(tracks_name)
             filter_out_non_roi_dets(scene, tracks)
 
-            metrics.add(tracks, gt_frames, name)
+            metrics.add(tracks, gt_frames, name, frame_range)
             interpolate_missing_detections(tracks)
-            metrics_int.add(tracks, gt_frames, name + 'i')
+            metrics_int.add(tracks, gt_frames, name + 'i', frame_range)
 
     res = metrics.summary()
     res_int = metrics_int.summary()

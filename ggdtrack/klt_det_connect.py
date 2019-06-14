@@ -233,6 +233,7 @@ def prep_training_graphs_worker(arg):
     if not os.path.exists(graph_name):
         graph = make_graph(video_detections(scene, f0, myseg), scene.fps)
         save_graph(graph, graph_name)
+        save_json({'first_frame': f0, 'length': myseg}, graph_name + '-meta.json')
     return part, (graph_name, scene.name)
 
 

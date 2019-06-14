@@ -5,7 +5,7 @@ from vi3o import view
 
 from ggdtrack import klt_det_connect
 from ggdtrack.klt_det_connect import video_detections, connect
-from ggdtrack.utils import save_graph
+from ggdtrack.utils import save_graph, save_json
 
 
 def prep_training_graphs(*args, **kwargs):
@@ -18,6 +18,7 @@ def simple_prep_training_graphs_worker(arg):
     if not os.path.exists(graph_name):
         graph = make_graph(video_detections(scene, f0, myseg), scene.fps)
         save_graph(graph, graph_name)
+        save_json({'first_frame': f0, 'length': myseg}, graph_name + '-meta.json')
     return part, (graph_name, scene.name)
 
 def make_graph(video_detections, fps, show=False):
