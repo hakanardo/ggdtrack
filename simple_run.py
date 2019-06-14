@@ -24,7 +24,8 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
 @click.option("--fold", default=0, type=int)
 @click.option("--model", default="NNModelSimple")
-def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, model):
+@click.option("--evalgt", default=False)
+def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, model, evalgt):
     # dataset = eval(dataset)(datadir, cachedir=cachedir, default_min_conf=minimal_confidence)
     # dataset.download()
     # dataset.prepare()
@@ -36,10 +37,14 @@ def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, 
     prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length)
     prep_minimal_graph_diffs(dataset, model, threads=threads)
     prep_eval_graphs(dataset, model, threads=threads)
-    train_graphres_minimal(dataset, model)
 
-    prep_eval_tracks(dataset, model, 'eval', threads=1)
-    # prep_eval_gt_tracks(dataset, model, 'eval', split_on_no_edge=True)
+    if evalgt:
+        dataset.logdir += '_gt'
+        prep_eval_gt_tracks(dataset, model, 'eval', split_on_no_edge=True)
+    else:
+        train_graphres_minimal(dataset, model)
+        prep_eval_tracks(dataset, model, 'eval', threads=1)
+
 
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)

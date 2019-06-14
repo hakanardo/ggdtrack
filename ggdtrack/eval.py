@@ -77,8 +77,8 @@ def prep_eval_graphs(dataset, model, threads=None, parts=["eval", "test"]):
     parallel_run(prep_eval_graph_worker, jobs, threads, "Prepping eval graphs")
 
 def prep_eval_tracks_worker(args):
-    model, name, device, cachedir = args
-    ofn = os.path.join(cachedir, "tracks", os.path.basename(name))
+    model, name, device, logdir = args
+    ofn = os.path.join(logdir, "tracks", os.path.basename(name))
 
     graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
     promote_graph(graph)
@@ -162,26 +162,7 @@ def filter_out_non_roi_dets(scene, tracks):
     tracks[:] = [tr for tr in tracks if tr]
 
 def eval_prepped_tracks(dataset, part='eval'):
-    metrics = MotMetrics(True)
-    metrics_int = MotMetrics(True)
-    for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
-        scene = dataset.scene(cam)
-        gt_frames = scene.ground_truth()
-        tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
-        tracks = load_pickle(tracks_name)
-        filter_out_non_roi_dets(scene, tracks)
-
-        metrics.add(tracks, gt_frames, name)
-        interpolate_missing_detections(tracks)
-        metrics_int.add(tracks, gt_frames, name + 'i')
-
-    res = metrics.summary()
-    res_int = metrics_int.summary()
-    print("Result")
-    print(res)
-    print("\nResult interpolated")
-    print(res_int)
-    return res, res_int
+    return eval_prepped_tracks_folds([dataset])
 
 def eval_prepped_tracks_folds(datasets, part='eval'):
     metrics = MotMetrics(True)
@@ -190,7 +171,7 @@ def eval_prepped_tracks_folds(datasets, part='eval'):
         for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
             scene = dataset.scene(cam)
             gt_frames = scene.ground_truth()
-            tracks_name = os.path.join(dataset.cachedir, "tracks", os.path.basename(name))
+            tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
             tracks = load_pickle(tracks_name)
             filter_out_non_roi_dets(scene, tracks)
 
@@ -231,7 +212,7 @@ def eval_prepped_tracks_csv(dataset, part='eval'):
         if name is None:
             break
 
-        tracks_name = os.path.join(dataset.cachedir, "tracks", os.path.basename(name))
+        tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
         tracks = load_pickle(tracks_name)
         track_frames = defaultdict(list)
         for i, tr in enumerate(tracks):
@@ -360,8 +341,8 @@ def eval_hamming(dataset, logdir, model, device=default_torch_device):
     return hamming
 
 def prep_eval_gt_tracks_worker(args):
-    model, name, scene, cachedir, split_on_no_edge = args
-    ofn = os.path.join(cachedir, "tracks", os.path.basename(name))
+    model, name, scene, logdir, split_on_no_edge = args
+    ofn = os.path.join(logdir, "tracks", os.path.basename(name))
 
     graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
     promote_graph(graph)
@@ -377,7 +358,7 @@ def prep_eval_gt_tracks_worker(args):
 
 def prep_eval_gt_tracks(dataset, model, part='eval', threads=None, split_on_no_edge=False):
     limit = graph_names(dataset, part)
-    jobs = [(model, name, dataset.scene(cam), dataset.cachedir, split_on_no_edge)
+    jobs = [(model, name, dataset.scene(cam), dataset.logdir, split_on_no_edge)
             for name, cam in limit]
     shuffle(jobs)
     parallel_run(prep_eval_gt_tracks_worker, jobs, threads, "Prepping eval tracks for %s" % part)
