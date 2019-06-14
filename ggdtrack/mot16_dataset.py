@@ -58,6 +58,13 @@ class Mot16(Dataset):
         h, w, _ = self.frame(scene, 1).shape
         return [(0, 0), (0, h-1), (w-1, h), (w-1, 0)]
 
+    def download(self):
+        if not os.path.exists(self.base_path):
+            raise NotImplementedError
+
+    def prepare(self):
+        pass
+
 
 class Mot16Scene(Scene):
     def __init__(self, dataset, name):
