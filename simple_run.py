@@ -36,7 +36,7 @@ def main(datadir, limit, threads, segment_length, cachedir, minimal_confidence, 
     prep_eval_graphs(dataset, model, threads=threads)
     train_graphres_minimal(dataset, model)
 
-    prep_eval_tracks(dataset, model, 'eval')
+    prep_eval_tracks(dataset, model, 'eval', threads=1)
     # prep_eval_gt_tracks(dataset, model, 'eval', split_on_no_edge=True)
 
     res, res_int = eval_prepped_tracks(dataset, 'eval')
