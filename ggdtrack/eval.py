@@ -193,6 +193,56 @@ def eval_prepped_tracks_folds(datasets, part='eval'):
     return res, res_int
 
 
+def join_track_windows(dataset, part='eval'):
+    entries = list(sorted(graph_names(dataset, part), key=lambda e: (e[1], e[0]))) + [(None, None)]
+    prev_cam = prev_track_frames = all_tracks = prev_tracks = None
+    for name, cam in entries:
+        if cam != prev_cam:
+            if all_tracks is not None:
+                print(prev_cam, len(all_tracks))
+            prev_track_frames = None
+            prev_cam = cam
+        if name is None:
+            break
+
+        tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
+        tracks = load_pickle(tracks_name)
+        print("    ", name, cam, len(tracks))
+        track_frames = defaultdict(list)
+        for i, tr in enumerate(tracks):
+            for det in tr:
+                det.idx = i
+                track_frames[det.frame].append(det)
+
+        if prev_track_frames is not None:
+            if len(track_frames.keys()) and len(prev_track_frames.keys()):
+                overlap = range(min(track_frames.keys()), max(prev_track_frames.keys())+1)
+                counts = np.zeros((len(prev_tracks), len(tracks)))
+                for f in overlap:
+                    for prv in prev_track_frames[f]:
+                        for nxt in track_frames[f]:
+                            if prv.left == nxt.left and prv.right == nxt.right and prv.top == nxt.top and prv.bottom == nxt.bottom:
+                                counts[prv.idx, nxt.idx] += 1
+                            else:
+                                counts[prv.idx, nxt.idx] -= 1
+
+                cost, _, nxt_matches = lapjv(-counts, extend_cost=True)
+                assert len(nxt_matches) == len(tracks)
+                for i in range(len(tracks)):
+                    j = nxt_matches[i]
+                    if counts[j][i] > 0:
+                        prev_tracks[j] += tracks[i]
+                        tracks[i] = prev_tracks[j]
+                    else:
+                        all_tracks.append(tracks[i])
+            else:
+                all_tracks.extend(tracks)
+        else:
+            all_tracks = tracks
+        prev_track_frames = track_frames
+        prev_tracks = tracks
+
+
 def eval_prepped_tracks_csv(dataset, part='eval'):
     logdir = dataset.logdir
     base = '%s/result_%s_%s' % (logdir, dataset.name, part)
@@ -373,9 +423,12 @@ def prep_eval_gt_tracks(dataset, model, part='eval', threads=None, split_on_no_e
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    from ggdtrack.visdrone_dataset import VisDrone
+    # from ggdtrack.visdrone_dataset import VisDrone
+    from ggdtrack.mot16_dataset import Mot16
     # dataset = Duke('data')
-    dataset = VisDrone('data')
+    # dataset = VisDrone('data')
+    dataset = Mot16('data')
+
 
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)
     # prep_eval_tracks(dataset, "logdir", NNModelGraphresPerConnection())
@@ -386,5 +439,7 @@ if __name__ == '__main__':
     # prep_eval_gt_tracks(dataset, NNModelGraphresPerConnection)
     # res, res_int = eval_prepped_tracks(dataset, 'eval')
 
-    prep_eval_tracks(dataset, "cachedir/logdir_%s" % dataset.name, NNModelGraphresPerConnection(), 'eval', threads=1)
+    # prep_eval_tracks(dataset, "cachedir/logdir_%s" % dataset.name, NNModelGraphresPerConnection(), 'eval', threads=1)
     # eval_prepped_tracks_csv(dataset, "cachedir/logdir_%s" % dataset.name, 'eval')
+
+    join_track_windows(dataset)
