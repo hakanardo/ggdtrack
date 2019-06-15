@@ -111,7 +111,7 @@ class VisDroneScene(Scene):
                         det = det.scale(self.dataset.scale)
                     if not self.should_ignore(det):
                         det.cls = row[7]
-                        det.scene = self
+                        det.scene_name = self.name
                         detections[det.frame].append(det)
                         did += 1
             for dets in detections.values():

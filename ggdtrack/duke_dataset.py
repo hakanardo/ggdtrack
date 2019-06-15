@@ -59,7 +59,10 @@ class Duke(Dataset):
             confidence = det[-1]
             if frame > stop_frame:
                 break
-            yield Detection(frame, left, top, right, bottom, confidence, ind)
+            det = Detection(frame, left, top, right, bottom, confidence, ind)
+            det.scene_name = camera
+            yield det
+
 
     def openpose_detections(self, camera, start_frame=1, stop_frame=float('Inf')):
         detections = h5py.File(self.path + '/detections/openpose/camera%d.mat' % camera)['detections']
@@ -77,7 +80,9 @@ class Duke(Dataset):
             confidence = det[-1]
             if frame > stop_frame:
                 break
-            yield Detection(frame, left, top, right, bottom, confidence, ind)
+            det = Detection(frame, left, top, right, bottom, confidence, ind)
+            det.scene_name = camera
+            yield det
 
     def ground_truth_detections(self, camera):
         gt = io.loadmat(self.path + '/ground_truth/trainval.mat')['trainData']

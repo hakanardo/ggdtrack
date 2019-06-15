@@ -89,7 +89,7 @@ class Mot16Scene(Scene):
                     print(row[0], row[6], row[7])
                     continue
                 det = Detection(int(row[0]), row[2], row[3], row[2]+row[4], row[3]+row[5], row[6], did)
-                det.scene = self
+                det.scene_name = self.name
                 detections[det.frame].append(det)
                 did += 1
             for dets in detections.values():
