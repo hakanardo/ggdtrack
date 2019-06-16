@@ -155,7 +155,7 @@ class NNModelGraphresPerConnection(NNModel):
 
     def connection_batch_forward(self, batch):
         if len(batch.long_idx) == 1 and len(batch.klt_idx) == 1:
-            return torch.tensor([])
+            return torch.zeros((0, 1))
         klt_scores = self.edge_model.klt_model(batch.klt_data)
         klt_scores, klt_n = idx_mean(klt_scores, batch.klt_idx, 64)
 
