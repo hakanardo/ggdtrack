@@ -25,7 +25,8 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--cachedir", default="cachedir", help="Directory into which intermediate results are cached between runs")
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
 @click.option("--fold", default=None, type=int)
-def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold):
+@click.option("--max-connect", default=5, type=int)
+def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_cconnect):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
         opts['fold'] = fold
@@ -33,7 +34,8 @@ def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_con
     dataset.download()
     dataset.prepare()
 
-    prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length)
+    prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length,
+                         worker_params=dict(max_cconnect=max_cconnect))
 
     model = NNModelGraphresPerConnection()
     prep_minimal_graph_diffs(dataset, model, threads=threads)

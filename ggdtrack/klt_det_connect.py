@@ -67,7 +67,7 @@ def estimate_intradet_iou(detections):
                 det.max_intra_ioa = max(det.max_intra_ioa, ioa)
 
 
-def make_graph(video_detections, fps, show=False):
+def make_graph(video_detections, fps, show=False, max_connect=5):
 
     tracks = []
     lk_params = dict( winSize  = (15, 15),
@@ -81,7 +81,6 @@ def make_graph(video_detections, fps, show=False):
 
     col = (255,0,0)
     max_len = 3*fps
-    max_connect = 5
     min_klt_per_obj = 10
     velocity_history = fps//2
     prediction_df = fps
@@ -230,16 +229,18 @@ def make_graph(video_detections, fps, show=False):
 
 
 def prep_training_graphs_worker(arg):
-    scene, f0, myseg, graph_name, part = arg
+    scene, f0, myseg, graph_name, part, params = arg
     if not os.path.exists(graph_name):
         graph = make_graph(video_detections(scene, f0, myseg), scene.fps)
-        save_graph(graph, graph_name)
+        save_graph(graph, graph_name, **params)
         save_json({'first_frame': f0, 'length': myseg}, graph_name + '-meta.json')
     return part, (graph_name, scene.name)
 
 
 def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None,
-                         worker=prep_training_graphs_worker):
+                         worker=prep_training_graphs_worker, worker_params=None):
+    if worker_params is None:
+        worker_params = {}
     lsts = {n: [] for n in dataset.parts.keys()}
     jobs = []
     for part in lsts.keys():
@@ -254,7 +255,7 @@ def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, s
                 else:
                     myseg = segment_length
                 graph_name = os.path.join(cachedir, "graphs", "%s_graph_%s_%.8d.pck" % (dataset.name, scene_name, f0))
-                jobs.append((scene, f0, myseg, graph_name, part))
+                jobs.append((scene, f0, myseg, graph_name, part, worker_params))
                 f0 += myseg - segment_overlap
 
     jobs.sort(key=lambda j: j[3])
