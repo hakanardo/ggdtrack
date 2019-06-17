@@ -169,6 +169,7 @@ class DukeMini(Duke):
 class DukeMiniScene(DukeScene):
     global_parts = {'train': range(127720, 181558),
                     'eval': range(181558, 187540+1),
+                    'test': range(227541, 227541),
                    }
 
 
