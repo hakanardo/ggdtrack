@@ -31,8 +31,8 @@ def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_con
     if fold is not None:
         opts['fold'] = fold
     dataset = eval(dataset)(datadir, **opts)
-    # dataset.download()
-    # dataset.prepare()
+    dataset.download()
+    dataset.prepare()
 
     prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length,
                          worker_params=dict(max_connect=max_connect))

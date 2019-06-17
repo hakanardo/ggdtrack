@@ -147,7 +147,6 @@ class Duke(Dataset):
         os.system("cd %s; zip duke.zip duke.txt" % logdir)
 
 
-
 class DukeScene(Scene):
     fps = 60
     start_times = [-1, 5543, 3607, 27244, 31182, 1, 22402, 18968, 46766]
@@ -161,6 +160,18 @@ class DukeScene(Scene):
         f0 = self.start_times[name]
         self.parts = {n: range(r.start - f0, r.stop - f0)
                       for n, r in self.global_parts.items()}
+
+
+class DukeMini(Duke):
+    def scene(self, scene):
+        return DukeMiniScene(self, scene)
+
+class DukeMiniScene(DukeScene):
+    global_parts = {'train': range(127720, 181558),
+                    'eval': range(181558, 187540+1),
+                   }
+
+
 
 
 class DukeVideoReader:
