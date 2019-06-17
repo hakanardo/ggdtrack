@@ -7,7 +7,7 @@ import os
 
 import click
 
-from ggdtrack.duke_dataset import Duke
+from ggdtrack.duke_dataset import Duke, DukeMini
 from ggdtrack.visdrone_dataset import VisDrone
 from ggdtrack.mot16_dataset import Mot16
 from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_csv
