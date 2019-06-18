@@ -15,7 +15,7 @@ from shapely.geometry import Polygon
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from ggdtrack.dataset import ground_truth_tracks
+from ggdtrack.dataset import ground_truth_tracks, Dataset
 from ggdtrack.graph_diff import split_track_on_missing_edge
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.lptrack import lp_track, interpolate_missing_detections, lp_track_weights
@@ -199,7 +199,7 @@ def join_track_windows(dataset, part='eval'):
     for name, cam in entries:
         if cam != prev_cam:
             if all_tracks is not None:
-                print(prev_cam, len(all_tracks))
+                yield prev_cam, all_tracks
             prev_track_frames = None
             prev_cam = cam
         if name is None:
@@ -207,7 +207,6 @@ def join_track_windows(dataset, part='eval'):
 
         tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
         tracks = load_pickle(tracks_name)
-        print("    ", name, cam, len(tracks))
         track_frames = defaultdict(list)
         for i, tr in enumerate(tracks):
             for det in tr:
@@ -242,64 +241,46 @@ def join_track_windows(dataset, part='eval'):
         prev_track_frames = track_frames
         prev_tracks = tracks
 
+def eval_prepped_tracks_joined(datasets, part='eval'):
+    if isinstance(datasets, Dataset):
+        datasets = [datasets]
+    metrics = MotMetrics(True)
+    metrics_int = MotMetrics(True)
+    for dataset in datasets:
+        for cam, tracks in tqdm(join_track_windows(dataset, part), 'Evaluating tracks'):
+            scene = dataset.scene(cam)
+            gt_frames = scene.ground_truth()
+            filter_out_non_roi_dets(scene, tracks)
+
+            metrics.add(tracks, gt_frames, scene.name, scene.parts[part])
+            interpolate_missing_detections(tracks)
+            metrics_int.add(tracks, gt_frames, scene.name + 'i', scene.parts[part])
+
+    res = metrics.summary()
+    res_int = metrics_int.summary()
+    print("Result")
+    print(res)
+    print("\nResult interpolated")
+    print(res_int)
+    return res, res_int
+
+
 
 def eval_prepped_tracks_csv(dataset, part='eval'):
     logdir = dataset.logdir
     base = '%s/result_%s_%s' % (logdir, dataset.name, part)
     os.makedirs(base, exist_ok=True)
     os.makedirs(base + '_int', exist_ok=True)
-    prev_cam = prev_track_frames = all_tracks = prev_tracks = None
-    entries = list(sorted(graph_names(dataset, part), key=lambda e: (e[1], e[0]))) + [(None, None)]
-    for name, cam in tqdm(entries, 'Evaluating tracks CSV'):
-        if cam != prev_cam:
-            if all_tracks is not None:
-                csv_eval, csv_submit = make_duke_csv(all_tracks, prev_cam)
-                np.savetxt('%s/%s_eval.txt' % (base, prev_cam), csv_eval, delimiter=',', fmt='%d')
-                np.savetxt('%s/%s_submit.txt' % (base, prev_cam), csv_submit, delimiter=',', fmt='%d')
 
-                interpolate_missing_detections(all_tracks)
-                csv_eval, csv_submit = make_duke_csv(all_tracks, prev_cam)
-                np.savetxt('%s_int/%s_eval.txt' % (base, prev_cam), csv_eval, delimiter=',', fmt='%d')
-                np.savetxt('%s_int/%s_submit.txt' % (base, prev_cam), csv_submit, delimiter=',', fmt='%d')
+    for cam, tracks in join_track_windows(dataset, part):
+        csv_eval, csv_submit = make_duke_csv(tracks, cam)
+        np.savetxt('%s/%s_eval.txt' % (base, cam), csv_eval, delimiter=',', fmt='%s')
+        np.savetxt('%s/%s_submit.txt' % (base, cam), csv_submit, delimiter=',', fmt='%s')
 
-            prev_track_frames = None
-            prev_cam = cam
-        if name is None:
-            break
-
-        tracks_name = os.path.join(dataset.logdir, "tracks", os.path.basename(name))
-        tracks = load_pickle(tracks_name)
-        track_frames = defaultdict(list)
-        for i, tr in enumerate(tracks):
-            for det in tr:
-                det.idx = i
-                track_frames[det.frame].append(det)
-
-        if prev_track_frames is not None:
-            if len(track_frames.keys()) and len(prev_track_frames.keys()):
-                overlap = range(min(track_frames.keys()), max(prev_track_frames.keys())+1)
-                counts = np.zeros((len(prev_tracks), len(tracks)))
-                for f in overlap:
-                    for prv in prev_track_frames[f]:
-                        for nxt in track_frames[f]:
-                            if prv.left == nxt.left and prv.right == nxt.right and prv.top == nxt.top and prv.bottom == nxt.bottom:
-                                counts[prv.idx, nxt.idx] += 1
-
-                cost, _, nxt_matches = lapjv(-counts, extend_cost=True)
-                assert len(nxt_matches) == len(tracks)
-                for i in range(len(tracks)):
-                    j = nxt_matches[i]
-                    if counts[j][i] > 0:
-                        prev_tracks[j] += tracks[i]
-                        tracks[i] = prev_tracks[j]
-                    else:
-                        all_tracks.append(tracks[i])
-            else:
-                all_tracks.extend(tracks)
-        else:
-            all_tracks = tracks
-        prev_track_frames = track_frames
-        prev_tracks = tracks
+        interpolate_missing_detections(tracks)
+        csv_eval, csv_submit = make_duke_csv(tracks, cam)
+        np.savetxt('%s_int/%s_eval.txt' % (base, cam), csv_eval, delimiter=',', fmt='%s')
+        np.savetxt('%s_int/%s_submit.txt' % (base, cam), csv_submit, delimiter=',', fmt='%s')
 
 def make_duke_csv(all_tracks, prev_cam):
     csv_eval, csv_submit = [], []
@@ -442,4 +423,6 @@ if __name__ == '__main__':
     # prep_eval_tracks(dataset, "cachedir/logdir_%s" % dataset.name, NNModelGraphresPerConnection(), 'eval', threads=1)
     # eval_prepped_tracks_csv(dataset, "cachedir/logdir_%s" % dataset.name, 'eval')
 
-    join_track_windows(dataset)
+    # eval_prepped_tracks_csv(dataset)
+    # join_track_windows(dataset)
+    eval_prepped_tracks_joined(dataset)
