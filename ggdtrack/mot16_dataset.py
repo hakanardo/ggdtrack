@@ -1,10 +1,13 @@
 import os
+import zipfile
 from collections import defaultdict
+from tempfile import TemporaryDirectory
 
 import numpy as np
 from vi3o.image import imread
 
 from ggdtrack.dataset import Dataset, Scene, Detection, nms
+from ggdtrack.utils import download_file
 
 
 class Mot16(Dataset):
@@ -16,6 +19,7 @@ class Mot16(Dataset):
         self.base_path = os.path.join(path, "MOT16")
         if default_min_conf is None:
             self.default_min_conf = 0
+        self.download()
         trainval = self._list_scenes('train')
         trainval.sort()
         if fold == 3:
@@ -27,6 +31,14 @@ class Mot16(Dataset):
             'eval': eval,
             'test': self._list_scenes('test'),
         }
+
+    def download(self):
+        if not os.path.exists(os.path.join(self.base_path, "train")):
+            with TemporaryDirectory() as tmp:
+                download_file("https://motchallenge.net/data/MOT16.zip", tmp)
+                zip = zipfile.ZipFile(os.path.join(tmp, "MOT16.zip"), 'r')
+                zip.extractall(self.base_path)
+                zip.close()
 
     def _list_scenes(self, part):
         seqs = os.listdir(os.path.join(self.base_path, part))
@@ -57,10 +69,6 @@ class Mot16(Dataset):
     def roi(self, scene):
         h, w, _ = self.frame(scene, 1).shape
         return [(0, 0), (0, h-1), (w-1, h), (w-1, 0)]
-
-    def download(self):
-        if not os.path.exists(self.base_path):
-            raise NotImplementedError
 
     def prepare(self):
         pass
