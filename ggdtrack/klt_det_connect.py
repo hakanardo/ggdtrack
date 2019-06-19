@@ -89,6 +89,7 @@ def make_graph(video_detections, fps, show=False, max_connect=5):
     detect = True
     for frame_idx, frame, detections in video_detections:
         frame_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        height, width, _ = frame.shape
 
         estimate_intradet_iou(detections)
         for det in detections:
@@ -115,11 +116,15 @@ def make_graph(video_detections, fps, show=False, max_connect=5):
             for tr, (x, y), good_flag, e in zip(tracks, p1.reshape(-1, 2), good, err1.flat):
                 if not good_flag:
                     continue
+                if not (0 <= x < width and 0 <= y < height):
+                    continue
+                tr.history.append((frame_idx, x, y, e))
                 if e > 1e3:
                     print('Bad klt confidence?')
                     if detections:
                         print('    ', detections[0].scene_name, frame_idx, e)
-                tr.history.append((frame_idx, x, y, e))
+                    print(tr.history)
+                    exit()
                 tr.history = tr.history[-max_len-1:]
                 new_tracks.append(tr)
                 if show:
@@ -307,7 +312,7 @@ if __name__ == '__main__':
     # make_graph(video_detections(Duke('/home/hakan/src/duke').scene(2), 54373, 10), 60, True)
     # make_duke_test_video()
 
-    # make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000086_00000_v"), 1, 184), 25, True)
+    make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000305_00000_v"), 160, 600), 25, True)
     # make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("val__uav0000137_00458_v"), 1, 10000), 25, True)
     # make_graph(video_detections(VisDrone('/home/hakan/src/ggdtrack/data/').scene("train__uav0000279_00001_v"), 160, 10000), 25, True)
-    make_graph(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'), 1, 1000), 25, True)
+    # make_graph(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'), 1, 1000), 25, True)
