@@ -124,7 +124,6 @@ def make_graph(video_detections, fps, show=False, max_connect=5):
                     if detections:
                         print('    ', detections[0].scene_name, frame_idx, e)
                     print(tr.history)
-                    exit()
                 tr.history = tr.history[-max_len-1:]
                 new_tracks.append(tr)
                 if show:
