@@ -145,10 +145,28 @@ class GraphDiffList:
         )
 
 
+def make_graph_batch(tr, model):
+    prv = tr[0]
+    connection_features = []
+    for nxt in tr[1:]:
+        connection_features.append(model.connection_weight_feature(prv, nxt))
+        prv = nxt
+    detection_features = [model.detecton_weight_feature(d) for d in tr]
+    return GraphBatch(connection_features, detection_features, 0)
+
+
+
 def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
     graph_diff = []
     gt_tracks, graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
     gt_tracks = split_track_on_missing_edge(gt_tracks)
+
+    for tr in gt_tracks:
+        prv = tr[0]
+        for nxt in tr[1:]:
+            prv.gt_next = nxt
+            prv = nxt
+        prv.gt_next = None
 
     for det in graph:
         if det.track_id is None:
@@ -205,6 +223,17 @@ def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
                     # Skipp first
                     graph_diff.append(GraphBatchPair(GraphBatch([f1], [model.detecton_weight_feature(det)], 0),
                                                      GraphBatch(empty, empty, 0), 'SkippFirst'))
+
+            # Long connection order
+            prv_tr = None
+            tr = [det]
+            for same_nxt in same_track[1:]:
+                while tr[-1] is not same_nxt:
+                    tr.append(tr[-1].gt_next)
+                prv_tr = tr
+                tr = [det, same_nxt]
+                graph_diff.append(GraphBatchPair(make_graph_batch(prv_tr, model), make_graph_batch(tr, model), "LongConnectionOrder"))
+                # print([d.frame for d in prv_tr], '>', [d.frame for d in tr])
 
             for other_nxt in other_track:
                 if other_nxt.track_id is None:
@@ -372,5 +401,9 @@ def make_ggd_batch(ggds):
 
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
+    from ggdtrack.visdrone_dataset import VisDrone
     from ggdtrack.model import NNModelGraphresPerConnection
-    prep_minimal_graph_diffs(Duke('/home/hakan/src/duke'), NNModelGraphresPerConnection)
+    # prep_minimal_graph_diffs(Duke('/home/hakan/src/duke'), NNModelGraphresPerConnection)
+
+    prep_minimal_graph_diff_worker((VisDrone('data'), 'train__uav0000013_00000_v', 'train', NNModelGraphresPerConnection,
+                                    "cachedir/graphs/VisDrone_graph_train__uav0000013_00000_v_00000001.pck", "t.pck"))
