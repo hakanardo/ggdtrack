@@ -23,6 +23,7 @@ class VisDrone(Dataset):
         self.detections_dir = detections
         self.scale = scale
         self.default_min_conf = default_min_conf
+        self.download()
         self.parts = {
             'train': self._list_scenes('train'),
             'eval': self._list_scenes('val'),

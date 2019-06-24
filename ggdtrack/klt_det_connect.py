@@ -118,12 +118,9 @@ def make_graph(video_detections, fps, show=False, max_connect=5):
                     continue
                 if not (0 <= x < width and 0 <= y < height):
                     continue
-                tr.history.append((frame_idx, x, y, e))
                 if e > 1e3:
-                    print('Bad klt confidence?')
-                    if detections:
-                        print('    ', detections[0].scene_name, frame_idx, e)
-                    print(tr.history)
+                    continue
+                tr.history.append((frame_idx, x, y, e))
                 tr.history = tr.history[-max_len-1:]
                 new_tracks.append(tr)
                 if show:
