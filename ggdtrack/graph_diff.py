@@ -160,6 +160,7 @@ def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
     graph_diff = []
     gt_tracks, graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
     gt_tracks = split_track_on_missing_edge(gt_tracks)
+    max_len = 10000
 
     for tr in gt_tracks:
         prv = tr[0]
@@ -277,6 +278,10 @@ def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
                         bad = model.connection_weight_feature(det, other_nxt)
                         graph_diff.append(GraphBatchPair(GraphBatch([ok], empty, 1),
                                                          GraphBatch([bad], empty, 0), 'SplitAndMerge'))
+        if len(graph_diff) > max_len:
+            yield graph_diff
+            graph_diff = []
+
     # Not too short tracks
     detections = []
     edges = []
@@ -296,18 +301,26 @@ def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
                 detections = []
                 edges = []
             prv = det
-    return graph_diff
+            if len(graph_diff) > max_len:
+                yield graph_diff
+                graph_diff = []
+
+    yield graph_diff
 
 find_minimal_graph_diff.too_short_track = 2
 find_minimal_graph_diff.long_track = 4
 
 
 def prep_minimal_graph_diff_worker(arg):
-    dataset, cam, part, model, fn, bfn = arg
-    if os.path.exists(bfn):
-        return part, bfn
-    save_torch(find_minimal_graph_diff(dataset.scene(cam), load_graph(fn),  model), bfn)
-    return part, bfn
+    dataset, cam, part, model, fn, base_bfn = arg
+    if not os.path.exists(base_bfn):
+        bfns = []
+        for i, graph_diff in enumerate(find_minimal_graph_diff(dataset.scene(cam), load_graph(fn),  model)):
+            bfn = base_bfn + "_%.4d" % i
+            save_torch(graph_diff, bfn)
+            bfns.append(bfn)
+        open(base_bfn, "w").close()
+    return part, base_bfn, bfns
 
 def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
     trainval = {'train': [], 'eval': []}
@@ -344,13 +357,14 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
             rmtree(dn)
         diff_lists[part] = GraphDiffList(dn, model)
 
-    for part, bfn in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
-        trainval[part].append(bfn)
+    for part, base_bfn, bfns in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
+        trainval[part].append(base_bfn)
         save_json(trainval, trainval_name)
-        graphdiff = torch.load(bfn)
-        lst = diff_lists[part]
-        for gd in graphdiff:
-            lst.append(gd)
+        for bfn in bfns:
+            graphdiff = torch.load(bfn)
+            lst = diff_lists[part]
+            for gd in graphdiff:
+                lst.append(gd)
 
 def split_track_on_missing_edge(gt_tracks):
     tracks = defaultdict(list)
