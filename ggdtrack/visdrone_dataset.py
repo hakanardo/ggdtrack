@@ -9,6 +9,9 @@ from vi3o.image import imread, imview, imscale
 from ggdtrack.dataset import Detection, Dataset, Scene, nms
 import numpy as np
 
+from ggdtrack.eval import join_track_windows
+from ggdtrack.lptrack import interpolate_missing_detections
+
 
 class VisDrone(Dataset):
     name = 'VisDrone'
@@ -86,6 +89,39 @@ class VisDrone(Dataset):
                 self._ignore_regions = defaultdict(list)
         return self._ignore_regions
 
+    def eval_prepped_tracks_csv(self, part='eval'):
+        logdir = self.logdir
+        base = '%s/result_%s_%s' % (logdir, self.name, part)
+        os.makedirs(base, exist_ok=True)
+        os.makedirs(base + '_int', exist_ok=True)
+
+        for cam, tracks in join_track_windows(self, part):
+            csv = self.make_result_csv(tracks, cam)
+            np.savetxt('%s/%s.txt' % (base, cam), csv, delimiter=',', fmt='%s')
+            interpolate_missing_detections(tracks)
+            csv = self.make_result_csv(tracks, cam)
+            np.savetxt('%s/%s.txt' % (base, cam), csv, delimiter=',', fmt='%s')
+
+    def make_result_csv(self, tracks, cam):
+        csv = []
+        for track_id, tr in enumerate(tracks):
+            tr.sort(key=lambda d: d.frame)
+            prv = -1
+            for det in tr:
+                if det.frame > prv:
+                    det.cls = 42 # XXX: FIXME
+                    csv.append([det.frame, track_id, det.left, det.top, det.width, det.height, 1, det.cls, -1, -1])
+                else:
+                    print("Duplicated frame:", det.frame)
+                prv = det.frame
+        return csv
+
+    def prepare_submition(self):
+        self.eval_prepped_tracks_csv('eval')
+        self.eval_prepped_tracks_csv('test')
+
+
+
 
 class VisDroneScene(Scene):
     fps = 25
@@ -135,3 +171,5 @@ class VisDroneScene(Scene):
         return False
 
 
+if __name__ == '__main__':
+    VisDrone('data').prepare_submition()

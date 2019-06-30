@@ -1,8 +1,3 @@
-# if __name__ == '__main__':
-#     from torch.multiprocessing import set_start_method
-#     set_start_method('forkserver')
-# import warnings
-# warnings.filterwarnings("ignore")
 import os
 
 import click
@@ -10,7 +5,7 @@ import click
 from ggdtrack.duke_dataset import Duke, DukeMini
 from ggdtrack.visdrone_dataset import VisDrone
 from ggdtrack.mot16_dataset import Mot16
-from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_csv
+from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks
 from ggdtrack.graph_diff import prep_minimal_graph_diffs
 from ggdtrack.klt_det_connect import prep_training_graphs
 from ggdtrack.model import NNModelGraphresPerConnection
@@ -26,7 +21,8 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
 @click.option("--fold", default=None, type=int)
 @click.option("--max-connect", default=5, type=int)
-def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect):
+@click.option("--no-train", is_flag=True)
+def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
         opts['fold'] = fold
@@ -41,16 +37,15 @@ def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_con
     prep_minimal_graph_diffs(dataset, model, threads=threads)
     prep_eval_graphs(dataset, model, threads=threads)
 
-    train_graphres_minimal(dataset, model)
+    if not no_train:
+        train_graphres_minimal(dataset, model)
 
     prep_eval_tracks(dataset, model, 'eval', threads=1)
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
     open(os.path.join(dataset.logdir, "eval_results_int.txt"), "w").write(res_int)
-    eval_prepped_tracks_csv(dataset, 'eval')
 
     prep_eval_tracks(dataset, model, 'test', threads=1)
-    eval_prepped_tracks_csv(dataset, 'test')
     dataset.prepare_submition()
 
 

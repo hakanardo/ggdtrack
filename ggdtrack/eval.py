@@ -87,6 +87,10 @@ def prep_eval_tracks_worker(args):
     tracks = lp_track(graph, connection_batch, detection_weight_features, model)
     for tr in tracks:
         for det in tr:
+            if hasattr(det, 'cls'):
+                cls = det.cls
+                det.__dict__ = {}
+                det.cls = cls
             det.__dict__ = {}
     save_pickle(tracks, ofn)
 
@@ -264,35 +268,6 @@ def eval_prepped_tracks_joined(datasets, part='eval'):
     print(res_int)
     return res, res_int
 
-
-
-def eval_prepped_tracks_csv(dataset, part='eval'):
-    logdir = dataset.logdir
-    base = '%s/result_%s_%s' % (logdir, dataset.name, part)
-    os.makedirs(base, exist_ok=True)
-    os.makedirs(base + '_int', exist_ok=True)
-
-    for cam, tracks in join_track_windows(dataset, part):
-        csv_eval, csv_submit = make_duke_csv(tracks, cam)
-        np.savetxt('%s/%s_eval.txt' % (base, cam), csv_eval, delimiter=',', fmt='%s')
-        np.savetxt('%s/%s_submit.txt' % (base, cam), csv_submit, delimiter=',', fmt='%s')
-
-        interpolate_missing_detections(tracks)
-        csv_eval, csv_submit = make_duke_csv(tracks, cam)
-        np.savetxt('%s_int/%s_eval.txt' % (base, cam), csv_eval, delimiter=',', fmt='%s')
-        np.savetxt('%s_int/%s_submit.txt' % (base, cam), csv_submit, delimiter=',', fmt='%s')
-
-def make_duke_csv(all_tracks, prev_cam):
-    csv_eval, csv_submit = [], []
-    for track_id, tr in enumerate(all_tracks):
-        tr.sort(key=lambda d: d.frame)
-        prv = -1
-        for det in tr:
-            if det.frame > prv:
-                csv_eval.append([det.frame, track_id, det.left, det.top, det.width, det.height, -1, -1])
-                csv_submit.append([prev_cam, track_id, det.frame, det.left, det.top, det.width, det.height])
-            prv = det.frame
-    return csv_eval, csv_submit
 
 class EvalGtGraphs:
     def __init__(self, dataset, entries, suffix):
