@@ -109,10 +109,9 @@ class VisDrone(Dataset):
             prv = -1
             for det in tr:
                 if det.frame > prv:
-                    det.cls = 42 # XXX: FIXME
                     csv.append([det.frame, track_id, det.left, det.top, det.width, det.height, 1, det.cls, -1, -1])
                 else:
-                    print("Duplicated frame:", det.frame)
+                    print("Duplicated frame:", det.frame, cam, track_id)
                 prv = det.frame
         return csv
 

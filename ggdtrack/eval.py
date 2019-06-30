@@ -91,7 +91,8 @@ def prep_eval_tracks_worker(args):
                 cls = det.cls
                 det.__dict__ = {}
                 det.cls = cls
-            det.__dict__ = {}
+            else:
+                det.__dict__ = {}
     save_pickle(tracks, ofn)
 
     return ofn
