@@ -390,11 +390,11 @@ def prep_eval_gt_tracks(dataset, model, part='eval', threads=None, split_on_no_e
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    # from ggdtrack.visdrone_dataset import VisDrone
+    from ggdtrack.visdrone_dataset import VisDrone
     from ggdtrack.mot16_dataset import Mot16
     # dataset = Duke('data')
-    # dataset = VisDrone('data')
-    dataset = Mot16('data')
+    dataset = VisDrone('data')
+    # dataset = Mot16('data')
 
 
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)

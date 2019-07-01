@@ -5,7 +5,7 @@ import click
 from ggdtrack.duke_dataset import Duke, DukeMini
 from ggdtrack.visdrone_dataset import VisDrone
 from ggdtrack.mot16_dataset import Mot16
-from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks
+from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_joined
 from ggdtrack.graph_diff import prep_minimal_graph_diffs
 from ggdtrack.klt_det_connect import prep_training_graphs
 from ggdtrack.model import NNModelGraphresPerConnection
@@ -44,6 +44,10 @@ def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_con
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
     open(os.path.join(dataset.logdir, "eval_results_int.txt"), "w").write(res_int)
+
+    res, res_int = eval_prepped_tracks_joined(dataset, 'eval')
+    open(os.path.join(dataset.logdir, "eval_results_joined.txt"), "w").write(res)
+    open(os.path.join(dataset.logdir, "eval_results_joined_int.txt"), "w").write(res_int)
 
     prep_eval_tracks(dataset, model, 'test', threads=1)
     dataset.prepare_submition()
