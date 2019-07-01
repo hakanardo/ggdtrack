@@ -75,11 +75,11 @@ def show_metrics_result(scene, tracks):
         for i in misses[f]:
             gt_detections[i].draw(img, (255,255,0))
         for i in matches[f]:
-            detections[f, i].draw(img, (0,255,0))
+            detections[f, i].draw(img, (0,255,0), label=detections[f, i].track_id)
         for i in extra[f]:
-            detections[f, i].draw(img, (255,0,0))
+            detections[f, i].draw(img, (255,0,0), label=detections[f, i].track_id)
         for i in switches[f]:
-            detections[f, i].draw(img, (255,100,0))
+            detections[f, i].draw(img, (255,100,0), label=detections[f, i].track_id)
         imwrite(img, "dbg/%.8d.jpg" % f)
         view(img)
 

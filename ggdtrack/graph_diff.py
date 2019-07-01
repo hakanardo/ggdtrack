@@ -6,7 +6,7 @@ from tempfile import TemporaryDirectory
 
 import torch
 
-from ggdtrack.dataset import ground_truth_tracks
+from ggdtrack.dataset import ground_truth_tracks, false_positive_tracks
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.mmap_array import as_database, VarHMatrixList, ScalarList
 from ggdtrack.utils import parallel, save_json, save_torch, load_pickle, load_json, load_graph
@@ -283,9 +283,9 @@ def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
             graph_diff = []
 
     # Not too short tracks
-    detections = []
-    edges = []
     for tr in gt_tracks:
+        detections = []
+        edges = []
         prv = None
         for det in tr:
             detections.append(model.detecton_weight_feature(det))
@@ -304,6 +304,24 @@ def find_minimal_graph_diff(scene, graph, model, empty=torch.tensor([])):
             if len(graph_diff) > max_len:
                 yield graph_diff
                 graph_diff = []
+
+    # Long false positive tracks
+    for tr in false_positive_tracks(gt_tracks, graph):
+        if len(tr) <= 2:  # Covered by FalsePositive and DualFalsePositive above
+            continue
+        detections = []
+        edges = []
+        prv = None
+        for det in tr:
+            detections.append(model.detecton_weight_feature(det))
+            if prv is not None:
+                edges.append(model.connection_weight_feature(prv, det))
+            prv = det
+        graph_diff.append(GraphBatchPair(GraphBatch(empty, empty, 0),
+                                         GraphBatch(edges, detections, 1), 'LongFalsePositiveTrack'))
+        if len(graph_diff) > max_len:
+            yield graph_diff
+            graph_diff = []
 
     yield graph_diff
 

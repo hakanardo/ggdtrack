@@ -9,6 +9,7 @@ from shapely import geometry
 import numpy as np
 
 
+
 class Detection(namedtuple('Detection', ['frame', 'left', 'top', 'right', 'bottom', 'confidence', 'id'])):
     # Boudning box detections. left, top are inclusice and right, bottom are not like the range params
     def draw(self, img, color=None, thickness=3, label=None):
@@ -226,3 +227,32 @@ def nms(detections):
         else:
             selected.append(det)
     return selected
+
+def false_positive_tracks(gt_tracks, graph):
+    for det in graph:
+        det.fp = True
+    for tr in gt_tracks:
+        for det in tr:
+            det.fp = False
+    tracks = []
+    for det in graph:
+        if det.fp and len([d for d in det.prev if d.fp]) == 0:
+            tr = []
+            nxt = [det]
+            while nxt:
+                det = min(nxt, key=lambda d: d.frame)
+                tr.append(det)
+                nxt = [d for d in det.next_weight_data.keys() if d.fp]
+            tracks.append(tr)
+    return tracks
+
+if __name__ == '__main__':
+    from ggdtrack.visdrone_dataset import VisDrone
+    from ggdtrack.utils import load_graph
+    from ggdtrack.lptrack import show_tracks, interpolate_missing_detections
+
+    scene = VisDrone('data').scene('val__uav0000305_00000_v')
+    graph = load_graph("cachedir/graphs/VisDrone_graph_val__uav0000305_00000_v_00000001.pck")
+    gt_tracks, graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+    fp_tracks = false_positive_tracks(gt_tracks, graph)
+    show_tracks(scene, interpolate_missing_detections(fp_tracks))
