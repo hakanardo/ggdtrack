@@ -252,7 +252,7 @@ def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, s
             f0 = scene.parts[part].start
             while f0 + segment_length <  scene.parts[part].stop or f0 == scene.parts[part].start:
                 if f0 + 2*segment_length >  scene.parts[part].stop:
-                    myseg = scene.parts[part].stop - f0 - 1
+                    myseg = scene.parts[part].stop - f0
                 else:
                     myseg = segment_length
                 graph_name = os.path.join(cachedir, "graphs", "%s_graph_%s_%.8d.pck" % (dataset.name, scene_name, f0))
