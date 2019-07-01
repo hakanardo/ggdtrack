@@ -100,7 +100,7 @@ class VisDrone(Dataset):
             np.savetxt('%s/%s.txt' % (base, cam), csv, delimiter=',', fmt='%s')
             interpolate_missing_detections(tracks)
             csv = self.make_result_csv(tracks, cam)
-            np.savetxt('%s/%s.txt' % (base, cam), csv, delimiter=',', fmt='%s')
+            np.savetxt('%s_int/%s.txt' % (base, cam), csv, delimiter=',', fmt='%s')
 
     def make_result_csv(self, tracks, cam):
         csv = []
@@ -118,8 +118,13 @@ class VisDrone(Dataset):
     def prepare_submition(self):
         self.eval_prepped_tracks_csv('eval')
         self.eval_prepped_tracks_csv('test')
-
-
+        for ver in ("eval", "eval_int", "test", "test_int"):
+            dir_name = '%s/result_%s_%s' % (self.logdir, self.name, ver)
+            dir_name = os.path.abspath(dir_name)
+            zip_name = dir_name + '.zip'
+            if os.path.exists(zip_name):
+                os.unlink(zip_name)
+            os.system("cd %s; zip %s *.txt" % (dir_name, zip_name))
 
 
 class VisDroneScene(Scene):

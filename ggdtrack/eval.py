@@ -197,6 +197,15 @@ def eval_prepped_tracks_folds(datasets, part='eval'):
     print(res_int)
     return res, res_int
 
+def merge_overlapping_detections(tracks):
+    for tr in tracks:
+        frames = {}
+        for det in tr:
+            if det.frame not in frames or det.confidence > frames[det.frame].confidence:
+                frames[det.frame] = det
+        tr[:] = frames.values()
+        tr.sort(key=lambda d: d.frame)
+
 
 def join_track_windows(dataset, part='eval'):
     entries = list(sorted(graph_names(dataset, part), key=lambda e: (e[1], e[0]))) + [(None, None)]
@@ -204,8 +213,9 @@ def join_track_windows(dataset, part='eval'):
     for name, cam in entries:
         if cam != prev_cam:
             if all_tracks is not None:
+                merge_overlapping_detections(all_tracks)
                 yield prev_cam, all_tracks
-            prev_track_frames = None
+            prev_track_frames = all_tracks = None
             prev_cam = cam
         if name is None:
             break
