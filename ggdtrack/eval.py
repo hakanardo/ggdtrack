@@ -116,11 +116,12 @@ def prep_eval_tracks(dataset, model, part='eval', device=default_torch_device, t
     parallel_run(prep_eval_tracks_worker, jobs, threads, "Prepping eval tracks for %s" % part)
 
 class MotMetrics:
-    def __init__(self, overall=False, iou_threshold=0.5):
+    def __init__(self, overall=False, iou_threshold=0.5, respect_classes=False):
         self.accumulators = []
         self.names = []
         self.overall = overall
         self.iou_threshold = iou_threshold
+        self.respect_classes = respect_classes
 
     def add(self, tracks, gt_frames, name='test', frame_range=None):
         assert frame_range is not None
@@ -142,7 +143,7 @@ class MotMetrics:
             gt = [d for d in gt_frames[f]]
             id_gt = [d.id for d in gt]
             id_res = [d.track_id for d in track_frames[f]]
-            dists = np.array([[1 - d1.iou(d2) for d2 in track_frames[f]] for d1 in gt])
+            dists = np.array([[self._distance(d1, d2) for d2 in track_frames[f]] for d1 in gt])
             dists[dists > self.iou_threshold] = np.nan
             acc.update(id_gt, id_res, dists, f)
 
@@ -160,6 +161,11 @@ class MotMetrics:
             namemap=motmetrics.io.motchallenge_metric_names
         )
 
+    def _distance(self, d1, d2):
+        if self.respect_classes and d1.cls != d2.cls:
+            return np.nan
+        return 1 - d1.iou(d2)
+
 
 def filter_out_non_roi_dets(scene, tracks):
     roi = Polygon(scene.roi())
@@ -173,8 +179,8 @@ def eval_prepped_tracks(dataset, part='eval'):
 
 
 def eval_prepped_tracks_folds(datasets, part='eval'):
-    metrics = MotMetrics(True)
-    metrics_int = MotMetrics(True)
+    metrics = MotMetrics(True, respect_classes=datasets[0].multi_class)
+    metrics_int = MotMetrics(True, respect_classes=datasets[0].multi_class)
     for dataset in datasets:
         for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
             meta = load_json(name + '-meta.json')
@@ -207,6 +213,19 @@ def merge_overlapping_detections(tracks):
         tr.sort(key=lambda d: d.frame)
 
 
+def consolidate_track_classes(tracks):
+    return
+    for tr in tracks:
+        if not hasattr(tr[0], 'cls'):
+            continue
+        cnt = defaultdict(int)
+        for det in tr:
+            cnt[det.cls] += 1
+        cls = max(cnt.keys(), key=lambda cls: cnt[cls])
+        for det in tr:
+            det.cls = cls
+
+
 def join_track_windows(dataset, part='eval'):
     entries = list(sorted(graph_names(dataset, part), key=lambda e: (e[1], e[0]))) + [(None, None)]
     prev_cam = prev_track_frames = all_tracks = prev_tracks = None
@@ -214,6 +233,7 @@ def join_track_windows(dataset, part='eval'):
         if cam != prev_cam:
             if all_tracks is not None:
                 merge_overlapping_detections(all_tracks)
+                consolidate_track_classes(all_tracks)
                 yield prev_cam, all_tracks
             prev_track_frames = all_tracks = None
             prev_cam = cam
@@ -259,8 +279,8 @@ def join_track_windows(dataset, part='eval'):
 def eval_prepped_tracks_joined(datasets, part='eval'):
     if isinstance(datasets, Dataset):
         datasets = [datasets]
-    metrics = MotMetrics(True)
-    metrics_int = MotMetrics(True)
+    metrics = MotMetrics(True, respect_classes=datasets[0].multi_class)
+    metrics_int = MotMetrics(True, respect_classes=datasets[0].multi_class)
     for dataset in datasets:
         for cam, tracks in tqdm(join_track_windows(dataset, part), 'Evaluating tracks'):
             scene = dataset.scene(cam)

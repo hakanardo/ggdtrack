@@ -136,6 +136,7 @@ class Dataset:
     name = 'Unknown'
     parts = {'train': None, 'eval': None, 'test': None}
     default_min_conf = 0
+    multi_class = False
 
     def __init__(self, cachedir=None, logdir=None):
         self.cachedir = cachedir if cachedir else "cachedir"
