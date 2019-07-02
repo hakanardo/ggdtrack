@@ -214,7 +214,6 @@ def merge_overlapping_detections(tracks):
 
 
 def consolidate_track_classes(tracks):
-    return
     for tr in tracks:
         if not hasattr(tr[0], 'cls'):
             continue
