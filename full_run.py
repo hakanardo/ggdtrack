@@ -24,7 +24,8 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--no-train", is_flag=True)
 @click.option("--resume", is_flag=True)
 @click.option("--max-worse-eval-epochs", default=float('Inf'), type=float)
-def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, resume, max_worse_eval_epochs):
+@click.option("--epochs", default=10, type=int)
+def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, resume, max_worse_eval_epochs, epochs):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
         opts['fold'] = fold
@@ -40,7 +41,7 @@ def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_con
     prep_eval_graphs(dataset, model, threads=threads)
 
     if not no_train:
-        train_graphres_minimal(dataset, model, resume=resume, max_worse_eval_epochs=max_worse_eval_epochs)
+        train_graphres_minimal(dataset, model, epochs=epochs, resume=resume, max_worse_eval_epochs=max_worse_eval_epochs)
 
     prep_eval_tracks(dataset, model, 'eval', threads=1)
     res, res_int = eval_prepped_tracks(dataset, 'eval')
