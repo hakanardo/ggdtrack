@@ -97,10 +97,11 @@ class VisDrone(Dataset):
 
         for cam, tracks in join_track_windows(self, part):
             csv = self.make_result_csv(tracks, cam)
-            np.savetxt('%s/%s.txt' % (base, cam), csv, delimiter=',', fmt='%s')
+            name = cam.split('__')[1]
+            np.savetxt('%s/%s.txt' % (base, name), csv, delimiter=',', fmt='%s')
             interpolate_missing_detections(tracks)
             csv = self.make_result_csv(tracks, cam)
-            np.savetxt('%s_int/%s.txt' % (base, cam), csv, delimiter=',', fmt='%s')
+            np.savetxt('%s_int/%s.txt' % (base, name), csv, delimiter=',', fmt='%s')
 
     def make_result_csv(self, tracks, cam):
         csv = []
