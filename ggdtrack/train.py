@@ -71,7 +71,7 @@ def train_graphres_minimal(dataset, model, device=default_torch_device, limit=No
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     if resume:
-        fn = sorted(glob("%s/???_snapshot.pyt" % (logdir)))[-1]
+        fn = sorted(glob("%s/snapshot_???.pyt" % (logdir)))[-1]
         snapshot = torch.load(fn)
         model.load_state_dict(snapshot['model_state'])
         optimizer.load_state_dict(snapshot['optimizer_state'])
