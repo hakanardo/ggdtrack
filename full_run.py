@@ -23,7 +23,7 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--max-connect", default=5, type=int)
 @click.option("--no-train", is_flag=True)
 @click.option("--resume", is_flag=True)
-@click.option("--max-worse-eval-epochs", default=float('Inf'), type=int)
+@click.option("--max-worse-eval-epochs", default=float('Inf'), type=float)
 def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, resume, max_worse_eval_epochs):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
