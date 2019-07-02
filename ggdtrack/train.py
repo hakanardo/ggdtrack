@@ -78,8 +78,6 @@ def train_graphres_minimal(dataset, model, device=default_torch_device, limit=No
         start_epoch = snapshot['epoch'] + 1
     else:
         start_epoch = 0
-
-    if logdir != resume:
         if os.path.exists(logdir):
             rmtree(logdir)
         os.makedirs(logdir)
