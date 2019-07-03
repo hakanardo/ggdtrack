@@ -392,7 +392,13 @@ def prep_eval_gt_tracks_worker(args):
         tracks = split_track_on_missing_edge(tracks)
     for tr in tracks:
         for det in tr:
-            det.__dict__ = {}
+            if hasattr(det, 'cls'):
+                cls = det.cls
+                det.__dict__ = {}
+                det.cls = cls
+            else:
+                det.__dict__ = {}
+
     save_pickle(tracks, ofn)
 
     return ofn
