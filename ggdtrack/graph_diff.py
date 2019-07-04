@@ -1,5 +1,6 @@
 import os
 from collections import defaultdict, namedtuple
+from glob import glob
 from random import shuffle
 from shutil import rmtree
 from tempfile import TemporaryDirectory
@@ -338,6 +339,8 @@ def prep_minimal_graph_diff_worker(arg):
             save_torch(graph_diff, bfn)
             bfns.append(bfn)
         open(base_bfn, "w").close()
+    else:
+        bfns = glob(base_bfn + "_*")
     return part, base_bfn, bfns
 
 def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
