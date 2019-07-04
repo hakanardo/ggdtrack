@@ -390,6 +390,7 @@ def prep_eval_gt_tracks_worker(args):
     tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
     if split_on_no_edge:
         tracks = split_track_on_missing_edge(tracks)
+    len_stats = defaultdict(int)
     for tr in tracks:
         for det in tr:
             if hasattr(det, 'cls'):
@@ -398,8 +399,10 @@ def prep_eval_gt_tracks_worker(args):
                 det.cls = cls
             else:
                 det.__dict__ = {}
+            len_stats[len(tr)] += 1
 
     save_pickle(tracks, ofn)
+    save_pickle({'track_length': len_stats}, ofn + '-stats')
 
     return ofn
 
