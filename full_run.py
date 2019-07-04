@@ -6,7 +6,7 @@ from ggdtrack.duke_dataset import Duke, DukeMini
 from ggdtrack.visdrone_dataset import VisDrone
 from ggdtrack.mot16_dataset import Mot16
 from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_joined
-from ggdtrack.graph_diff import prep_minimal_graph_diffs
+from ggdtrack.graph_diff import prep_minimal_graph_diffs, find_minimal_graph_diff
 from ggdtrack.klt_det_connect import prep_training_graphs
 from ggdtrack.model import NNModelGraphresPerConnection
 from ggdtrack.train import train_graphres_minimal
@@ -25,13 +25,17 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--resume", is_flag=True)
 @click.option("--max-worse-eval-epochs", default=float('Inf'), type=float)
 @click.option("--epochs", default=10, type=int)
-def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, resume, max_worse_eval_epochs, epochs):
+@click.option("--too-short-track", default=2, type=int)
+def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, resume, max_worse_eval_epochs, epochs, too_short_track):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
         opts['fold'] = fold
     dataset = eval(dataset)(datadir, **opts)
     dataset.download()
     dataset.prepare()
+
+    find_minimal_graph_diff.too_short_track = too_short_track
+    find_minimal_graph_diff.long_track = too_short_track * 2
 
     prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length,
                          worker_params=dict(max_connect=max_connect))
