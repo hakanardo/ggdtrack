@@ -1,4 +1,9 @@
-from vi3o.image import imview, view
+from collections import defaultdict
+
+from vi3o.image import imview, view, imwrite
+
+from ggdtrack.eval import MotMetrics, filter_out_non_roi_dets
+
 
 def show_gt(scene):
     gt_frames = scene.ground_truth()
@@ -35,12 +40,61 @@ def show_gt_and_detections(scene):
             det.draw(img, color=(0,0,255), label=str(det.confidence))
         imview(img)
 
+def show_metrics_result(scene, tracks):
+    metrics = MotMetrics(True, respect_classes=scene.dataset.multi_class)
+    gt_frames = scene.ground_truth()
+    frame_range = range(min(gt_frames.keys()), max(gt_frames.keys()) + 1)
+    filter_out_non_roi_dets(scene, tracks)
+    metrics.add(tracks, gt_frames, "tst", frame_range)
+    print(metrics.summary())
+
+    misses = defaultdict(set)
+    matches = defaultdict(set)
+    extra = defaultdict(set)
+    switches = defaultdict(set)
+    for index, row in metrics.accumulators[0].mot_events.iterrows():
+        if row.Type == 'MISS':
+            misses[index[0]].add(row.OId)
+        elif row.Type == 'MATCH':
+            matches[index[0]].add(row.HId)
+        elif row.Type == 'FP':
+            extra[index[0]].add(row.HId)
+        elif row.Type == 'SWITCH':
+            switches[index[0]].add(row.HId)
+        else:
+            print(row.Type)
+
+    detections = {}
+    for tr in tracks:
+        for det in tr:
+            detections[det.frame, det.track_id] = det
+
+    def label(det):
+        return '%d (%s)' % (det.track_id, scene.dataset.class_names[det.cls])
+
+
+    for f in frame_range:
+        img = scene.frame(f)
+        gt_detections = {d.id: d for d in gt_frames[f]}
+        for i in misses[f]:
+            gt_detections[i].draw(img, (255,255,0))
+        for i in matches[f]:
+            detections[f, i].draw(img, (0,255,0), label=label(detections[f, i]))
+        for i in extra[f]:
+            detections[f, i].draw(img, (255,0,0), label=label(detections[f, i]))
+        for i in switches[f]:
+            detections[f, i].draw(img, (255,100,0), label=label(detections[f, i]))
+        imwrite(img, "dbg/%.8d.jpg" % f)
+        view(img)
+
+
 
 if __name__ == '__main__':
     from ggdtrack.visdrone_dataset import VisDrone
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.mot16_dataset import Mot16
     from ggdtrack.klt_det_connect import video_detections
+    from ggdtrack.utils import load_pickle
 
     # show_gt(Duke("/home/hakan/src/duke").scene(1))
     # show_detections(video_detections(Duke('/home/hakan/src/duke').scene(1), 124472, 1000, 0.3))
@@ -59,6 +113,9 @@ if __name__ == '__main__':
     # show_detections(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-05'), 1, 1000))
     # show_gt(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-04'))
     # show_detections(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-04'), 1, 1000))
-    show_detections(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'), 1, 1000))
+    # show_detections(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'), 1, 1000))
     # show_gt(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'))
+
+    show_metrics_result(VisDrone('data').scene("val__uav0000305_00000_v"), load_pickle("cachedir/logdir_VisDrone/tracks/VisDrone_graph_val__uav0000305_00000_v_00000001.pck"))
+    # show_metrics_result(VisDrone('data').scene("val__uav0000268_05773_v"), load_pickle("cachedir/logdir_VisDrone/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck"))
 

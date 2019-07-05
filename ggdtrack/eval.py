@@ -87,7 +87,12 @@ def prep_eval_tracks_worker(args):
     tracks = lp_track(graph, connection_batch, detection_weight_features, model)
     for tr in tracks:
         for det in tr:
-            det.__dict__ = {}
+            if hasattr(det, 'cls'):
+                cls = det.cls
+                det.__dict__ = {}
+                det.cls = cls
+            else:
+                det.__dict__ = {}
     save_pickle(tracks, ofn)
 
     return ofn
@@ -111,11 +116,12 @@ def prep_eval_tracks(dataset, model, part='eval', device=default_torch_device, t
     parallel_run(prep_eval_tracks_worker, jobs, threads, "Prepping eval tracks for %s" % part)
 
 class MotMetrics:
-    def __init__(self, overall=False, iou_threshold=0.5):
+    def __init__(self, overall=False, iou_threshold=0.5, respect_classes=False):
         self.accumulators = []
         self.names = []
         self.overall = overall
         self.iou_threshold = iou_threshold
+        self.respect_classes = respect_classes
 
     def add(self, tracks, gt_frames, name='test', frame_range=None):
         assert frame_range is not None
@@ -137,7 +143,7 @@ class MotMetrics:
             gt = [d for d in gt_frames[f]]
             id_gt = [d.id for d in gt]
             id_res = [d.track_id for d in track_frames[f]]
-            dists = np.array([[1 - d1.iou(d2) for d2 in track_frames[f]] for d1 in gt])
+            dists = np.array([[self._distance(d1, d2) for d2 in track_frames[f]] for d1 in gt])
             dists[dists > self.iou_threshold] = np.nan
             acc.update(id_gt, id_res, dists, f)
 
@@ -155,6 +161,11 @@ class MotMetrics:
             namemap=motmetrics.io.motchallenge_metric_names
         )
 
+    def _distance(self, d1, d2):
+        if self.respect_classes and d1.cls != d2.cls:
+            return np.nan
+        return 1 - d1.iou(d2)
+
 
 def filter_out_non_roi_dets(scene, tracks):
     roi = Polygon(scene.roi())
@@ -168,8 +179,8 @@ def eval_prepped_tracks(dataset, part='eval'):
 
 
 def eval_prepped_tracks_folds(datasets, part='eval'):
-    metrics = MotMetrics(True)
-    metrics_int = MotMetrics(True)
+    metrics = MotMetrics(True, respect_classes=datasets[0].multi_class)
+    metrics_int = MotMetrics(True, respect_classes=datasets[0].multi_class)
     for dataset in datasets:
         for name, cam in tqdm(graph_names(dataset, part), 'Evaluating tracks'):
             meta = load_json(name + '-meta.json')
@@ -192,6 +203,27 @@ def eval_prepped_tracks_folds(datasets, part='eval'):
     print(res_int)
     return res, res_int
 
+def merge_overlapping_detections(tracks):
+    for tr in tracks:
+        frames = {}
+        for det in tr:
+            if det.frame not in frames or det.confidence > frames[det.frame].confidence:
+                frames[det.frame] = det
+        tr[:] = frames.values()
+        tr.sort(key=lambda d: d.frame)
+
+
+def consolidate_track_classes(tracks):
+    for tr in tracks:
+        if not hasattr(tr[0], 'cls'):
+            continue
+        cnt = defaultdict(int)
+        for det in tr:
+            cnt[det.cls] += 1
+        cls = max(cnt.keys(), key=lambda cls: cnt[cls])
+        for det in tr:
+            det.cls = cls
+
 
 def join_track_windows(dataset, part='eval'):
     entries = list(sorted(graph_names(dataset, part), key=lambda e: (e[1], e[0]))) + [(None, None)]
@@ -199,8 +231,10 @@ def join_track_windows(dataset, part='eval'):
     for name, cam in entries:
         if cam != prev_cam:
             if all_tracks is not None:
+                merge_overlapping_detections(all_tracks)
+                consolidate_track_classes(all_tracks)
                 yield prev_cam, all_tracks
-            prev_track_frames = None
+            prev_track_frames = all_tracks = None
             prev_cam = cam
         if name is None:
             break
@@ -244,8 +278,8 @@ def join_track_windows(dataset, part='eval'):
 def eval_prepped_tracks_joined(datasets, part='eval'):
     if isinstance(datasets, Dataset):
         datasets = [datasets]
-    metrics = MotMetrics(True)
-    metrics_int = MotMetrics(True)
+    metrics = MotMetrics(True, respect_classes=datasets[0].multi_class)
+    metrics_int = MotMetrics(True, respect_classes=datasets[0].multi_class)
     for dataset in datasets:
         for cam, tracks in tqdm(join_track_windows(dataset, part), 'Evaluating tracks'):
             scene = dataset.scene(cam)
@@ -264,35 +298,6 @@ def eval_prepped_tracks_joined(datasets, part='eval'):
     print(res_int)
     return res, res_int
 
-
-
-def eval_prepped_tracks_csv(dataset, part='eval'):
-    logdir = dataset.logdir
-    base = '%s/result_%s_%s' % (logdir, dataset.name, part)
-    os.makedirs(base, exist_ok=True)
-    os.makedirs(base + '_int', exist_ok=True)
-
-    for cam, tracks in join_track_windows(dataset, part):
-        csv_eval, csv_submit = make_duke_csv(tracks, cam)
-        np.savetxt('%s/%s_eval.txt' % (base, cam), csv_eval, delimiter=',', fmt='%s')
-        np.savetxt('%s/%s_submit.txt' % (base, cam), csv_submit, delimiter=',', fmt='%s')
-
-        interpolate_missing_detections(tracks)
-        csv_eval, csv_submit = make_duke_csv(tracks, cam)
-        np.savetxt('%s_int/%s_eval.txt' % (base, cam), csv_eval, delimiter=',', fmt='%s')
-        np.savetxt('%s_int/%s_submit.txt' % (base, cam), csv_submit, delimiter=',', fmt='%s')
-
-def make_duke_csv(all_tracks, prev_cam):
-    csv_eval, csv_submit = [], []
-    for track_id, tr in enumerate(all_tracks):
-        tr.sort(key=lambda d: d.frame)
-        prv = -1
-        for det in tr:
-            if det.frame > prv:
-                csv_eval.append([det.frame, track_id, det.left, det.top, det.width, det.height, -1, -1])
-                csv_submit.append([prev_cam, track_id, det.frame, det.left, det.top, det.width, det.height])
-            prv = det.frame
-    return csv_eval, csv_submit
 
 class EvalGtGraphs:
     def __init__(self, dataset, entries, suffix):
@@ -385,10 +390,19 @@ def prep_eval_gt_tracks_worker(args):
     tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
     if split_on_no_edge:
         tracks = split_track_on_missing_edge(tracks)
+    len_stats = defaultdict(int)
     for tr in tracks:
         for det in tr:
-            det.__dict__ = {}
+            if hasattr(det, 'cls'):
+                cls = det.cls
+                det.__dict__ = {}
+                det.cls = cls
+            else:
+                det.__dict__ = {}
+            len_stats[len(tr)] += 1
+
     save_pickle(tracks, ofn)
+    save_pickle({'track_length': len_stats}, ofn + '-stats')
 
     return ofn
 
@@ -404,11 +418,11 @@ def prep_eval_gt_tracks(dataset, model, part='eval', threads=None, split_on_no_e
 if __name__ == '__main__':
     from ggdtrack.duke_dataset import Duke
     from ggdtrack.model import NNModelGraphresPerConnection
-    # from ggdtrack.visdrone_dataset import VisDrone
+    from ggdtrack.visdrone_dataset import VisDrone
     from ggdtrack.mot16_dataset import Mot16
     # dataset = Duke('data')
-    # dataset = VisDrone('data')
-    dataset = Mot16('data')
+    dataset = VisDrone('data')
+    # dataset = Mot16('data')
 
 
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)

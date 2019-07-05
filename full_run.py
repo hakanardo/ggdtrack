@@ -1,8 +1,3 @@
-# if __name__ == '__main__':
-#     from torch.multiprocessing import set_start_method
-#     set_start_method('forkserver')
-# import warnings
-# warnings.filterwarnings("ignore")
 import os
 
 import click
@@ -10,8 +5,8 @@ import click
 from ggdtrack.duke_dataset import Duke, DukeMini
 from ggdtrack.visdrone_dataset import VisDrone
 from ggdtrack.mot16_dataset import Mot16
-from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_csv
-from ggdtrack.graph_diff import prep_minimal_graph_diffs
+from ggdtrack.eval import prep_eval_graphs, prep_eval_tracks, eval_prepped_tracks, eval_prepped_tracks_joined
+from ggdtrack.graph_diff import prep_minimal_graph_diffs, find_minimal_graph_diff
 from ggdtrack.klt_det_connect import prep_training_graphs
 from ggdtrack.model import NNModelGraphresPerConnection
 from ggdtrack.train import train_graphres_minimal
@@ -26,13 +21,21 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
 @click.option("--fold", default=None, type=int)
 @click.option("--max-connect", default=5, type=int)
-def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect):
+@click.option("--no-train", is_flag=True)
+@click.option("--resume", is_flag=True)
+@click.option("--max-worse-eval-epochs", default=float('Inf'), type=float)
+@click.option("--epochs", default=10, type=int)
+@click.option("--too-short-track", default=2, type=int)
+def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, resume, max_worse_eval_epochs, epochs, too_short_track):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
         opts['fold'] = fold
     dataset = eval(dataset)(datadir, **opts)
     dataset.download()
     dataset.prepare()
+
+    find_minimal_graph_diff.too_short_track = too_short_track
+    find_minimal_graph_diff.long_track = too_short_track * 2
 
     prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length,
                          worker_params=dict(max_connect=max_connect))
@@ -41,16 +44,19 @@ def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_con
     prep_minimal_graph_diffs(dataset, model, threads=threads)
     prep_eval_graphs(dataset, model, threads=threads)
 
-    train_graphres_minimal(dataset, model)
+    if not no_train:
+        train_graphres_minimal(dataset, model, epochs=epochs, resume=resume, max_worse_eval_epochs=max_worse_eval_epochs)
 
     prep_eval_tracks(dataset, model, 'eval', threads=1)
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
     open(os.path.join(dataset.logdir, "eval_results_int.txt"), "w").write(res_int)
-    eval_prepped_tracks_csv(dataset, 'eval')
+
+    res, res_int = eval_prepped_tracks_joined(dataset, 'eval')
+    open(os.path.join(dataset.logdir, "eval_results_joined.txt"), "w").write(res)
+    open(os.path.join(dataset.logdir, "eval_results_joined_int.txt"), "w").write(res_int)
 
     prep_eval_tracks(dataset, model, 'test', threads=1)
-    eval_prepped_tracks_csv(dataset, 'test')
     dataset.prepare_submition()
 
 

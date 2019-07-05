@@ -9,10 +9,14 @@ from vi3o.image import imread, imview, imscale
 from ggdtrack.dataset import Detection, Dataset, Scene, nms
 import numpy as np
 
+from ggdtrack.eval import join_track_windows
+from ggdtrack.lptrack import interpolate_missing_detections
+
 
 class VisDrone(Dataset):
     name = 'VisDrone'
     class_names = ('ignored','pedestrian','person','bicycle','car','van','truck','tricycle','awning-tricyle','bus','motor', 'others')
+    multi_class = True
 
     def __init__(self, path, detections='FasterRCNN-MOT-detections', scale=1.0, default_min_conf=None,
                  class_set = ('car','bus','truck','pedestrian','van'), cachedir=None, logdir=None):
@@ -86,6 +90,44 @@ class VisDrone(Dataset):
                 self._ignore_regions = defaultdict(list)
         return self._ignore_regions
 
+    def eval_prepped_tracks_csv(self, part='eval'):
+        logdir = self.logdir
+        base = '%s/result_%s_%s' % (logdir, self.name, part)
+        os.makedirs(base, exist_ok=True)
+        os.makedirs(base + '_int', exist_ok=True)
+
+        for cam, tracks in join_track_windows(self, part):
+            csv = self.make_result_csv(tracks, cam)
+            name = cam.split('__')[1]
+            np.savetxt('%s/%s.txt' % (base, name), csv, delimiter=',', fmt='%s')
+            interpolate_missing_detections(tracks)
+            csv = self.make_result_csv(tracks, cam)
+            np.savetxt('%s_int/%s.txt' % (base, name), csv, delimiter=',', fmt='%s')
+
+    def make_result_csv(self, tracks, cam):
+        csv = []
+        for track_id, tr in enumerate(tracks):
+            tr.sort(key=lambda d: d.frame)
+            prv = -1
+            for det in tr:
+                if det.frame > prv:
+                    csv.append([det.frame, track_id, det.left, det.top, det.width, det.height, 1, det.cls, -1, -1])
+                else:
+                    print("Duplicated frame:", det.frame, cam, track_id)
+                prv = det.frame
+        return csv
+
+    def prepare_submition(self):
+        self.eval_prepped_tracks_csv('eval')
+        self.eval_prepped_tracks_csv('test')
+        for ver in ("eval", "eval_int", "test", "test_int"):
+            dir_name = '%s/result_%s_%s' % (self.logdir, self.name, ver)
+            dir_name = os.path.abspath(dir_name)
+            zip_name = dir_name + '.zip'
+            if os.path.exists(zip_name):
+                os.unlink(zip_name)
+            os.system("cd %s; zip %s *.txt" % (dir_name, zip_name))
+
 
 class VisDroneScene(Scene):
     fps = 25
@@ -135,3 +177,5 @@ class VisDroneScene(Scene):
         return False
 
 
+if __name__ == '__main__':
+    VisDrone('data').prepare_submition()

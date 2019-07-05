@@ -3,7 +3,7 @@ import click
 
 from ggdtrack.duke_dataset import Duke
 from ggdtrack.visdrone_dataset import VisDrone
-from ggdtrack.eval import prep_eval_gt_tracks, eval_prepped_tracks
+from ggdtrack.eval import prep_eval_gt_tracks, eval_prepped_tracks, eval_prepped_tracks_joined
 from ggdtrack.model import NNModelGraphresPerConnection
 
 @click.command()
@@ -15,9 +15,14 @@ def main(dataset, datadir, cachedir, minimal_confidence):
     model = NNModelGraphresPerConnection()
     dataset = eval(dataset)(datadir, cachedir=cachedir, default_min_conf=minimal_confidence)
     prep_eval_gt_tracks(dataset, model, 'eval', threads=1)
+
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results_gt.txt"), "w").write(res)
     open(os.path.join(dataset.logdir, "eval_results_gt_int.txt"), "w").write(res_int)
+
+    res, res_int = eval_prepped_tracks_joined(dataset, 'eval')
+    open(os.path.join(dataset.logdir, "eval_results_gt_joined.txt"), "w").write(res)
+    open(os.path.join(dataset.logdir, "eval_results_gt_joined_int.txt"), "w").write(res_int)
 
 if __name__ == '__main__':
     main()
