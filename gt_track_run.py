@@ -16,6 +16,7 @@ def main(dataset, datadir, cachedir, minimal_confidence):
     dataset = eval(dataset)(datadir, cachedir=cachedir, default_min_conf=minimal_confidence)
     prep_eval_gt_tracks(dataset, model, 'eval', threads=1)
 
+    dataset.multi_class = False # Ignore classes as we seek an upper bound
     res, res_int = eval_prepped_tracks(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results_gt.txt"), "w").write(res)
     open(os.path.join(dataset.logdir, "eval_results_gt_int.txt"), "w").write(res_int)

@@ -199,13 +199,13 @@ def ground_truth_tracks(gt_frames, graph, iou_threshold=0.5):
         for det in detections:
             det.track_id = None
         if len(gt) > 0:
-            costs = [[-det.iou(d) for d in gt] for det in detections]
+            costs = [[1 - det.iou(d) for d in gt] for det in detections]
             if costs:
                 cost, _, gt_matches = lapjv(np.array(costs), extend_cost=True)
                 assert len(gt_matches) == len(gt)
                 for i in range(len(gt)):
                     j = gt_matches[i]
-                    if -costs[j][i] > iou_threshold:
+                    if costs[j][i] <= iou_threshold:
                         detections[j].track_id = gt[i].id
     gt_tracks = defaultdict(list)
     for det in graph:
