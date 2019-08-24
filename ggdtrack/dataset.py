@@ -207,6 +207,7 @@ def ground_truth_tracks(gt_frames, graph, iou_threshold=0.5):
                     j = gt_matches[i]
                     if costs[j][i] <= iou_threshold:
                         detections[j].track_id = gt[i].id
+                        detections[j].gt_cls = gt[i].cls
     gt_tracks = defaultdict(list)
     for det in graph:
         if det.track_id is not None:
