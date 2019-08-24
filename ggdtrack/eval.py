@@ -275,15 +275,13 @@ def join_track_windows(dataset, part='eval'):
         prev_track_frames = track_frames
         prev_tracks = tracks
 
-def eval_prepped_tracks_joined(datasets, part='eval', discard_bad_classes=False):
+def eval_prepped_tracks_joined(datasets, part='eval'):
     if isinstance(datasets, Dataset):
         datasets = [datasets]
     metrics = MotMetrics(True, respect_classes=datasets[0].multi_class)
     metrics_int = MotMetrics(True, respect_classes=datasets[0].multi_class)
     for dataset in datasets:
         for cam, tracks in tqdm(join_track_windows(dataset, part), 'Evaluating tracks'):
-            if discard_bad_classes:
-                tracks = [tr for tr in tracks if tr[0].cls == tr[0].gt_cls]
             scene = dataset.scene(cam)
             gt_frames = scene.ground_truth()
             filter_out_non_roi_dets(scene, tracks)
