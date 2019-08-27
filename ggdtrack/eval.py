@@ -389,7 +389,7 @@ def prep_eval_gt_tracks_worker(args):
 
     graph, detection_weight_features, connection_batch = torch.load(name + '-%s-eval_graph' % model.feature_name)
     promote_graph(graph)
-    tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph)
+    tracks, gt_graph_frames = ground_truth_tracks(scene.ground_truth(), graph, add_gt_class=True)
     if split_on_no_edge:
         tracks = split_track_on_missing_edge(tracks)
     len_stats = defaultdict(int)
@@ -397,8 +397,11 @@ def prep_eval_gt_tracks_worker(args):
         for det in tr:
             if hasattr(det, 'cls'):
                 cls = det.cls
+                gt_cls = det.gt_cls if hasattr(det, 'gt_cls') else None
                 det.__dict__ = {}
                 det.cls = cls
+                if gt_cls is not None:
+                    det.gt_cls = gt_cls
             else:
                 det.__dict__ = {}
             len_stats[len(tr)] += 1
