@@ -37,7 +37,7 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
 
     global_skip = {"LongConnectionOrder", "LongFalsePositiveTrack"}
     model = NNModelGraphresPerConnection()
-    prep_minimal_graph_diffs(dataset, model, threads=threads, skipped_ggd_types=global_skip)
+    prep_minimal_graph_diffs(dataset, model, threads=threads) #, skipped_ggd_types=global_skip)
     prep_eval_graphs(dataset, model, threads=threads)
 
     train_graphres_minimal(dataset, model, epochs=epochs, max_worse_eval_epochs=max_worse_eval_epochs)
@@ -47,9 +47,9 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
     open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
     open(os.path.join(dataset.logdir, "eval_results_int.txt"), "w").write(res_int)
 
-    res, res_int = eval_prepped_tracks_joined(dataset, 'eval')
-    open(os.path.join(dataset.logdir, "eval_results_joined.txt"), "w").write(res)
-    open(os.path.join(dataset.logdir, "eval_results_joined_int.txt"), "w").write(res_int)
+    #res, res_int = eval_prepped_tracks_joined(dataset, 'eval')
+    #open(os.path.join(dataset.logdir, "eval_results_joined.txt"), "w").write(res)
+    #open(os.path.join(dataset.logdir, "eval_results_joined_int.txt"), "w").write(res_int)
 
 if __name__ == '__main__':
     main()
