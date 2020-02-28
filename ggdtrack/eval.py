@@ -426,8 +426,8 @@ if __name__ == '__main__':
     from ggdtrack.visdrone_dataset import VisDrone
     from ggdtrack.mot16_dataset import Mot16
     # dataset = Duke('data')
-    dataset = VisDrone('data')
-    # dataset = Mot16('data')
+    # dataset = VisDrone('data')
+    dataset = Mot16('data')
 
 
     # prep_eval_graphs(dataset, NNModelGraphresPerConnection)

@@ -14,7 +14,6 @@ from ggdtrack.train import train_graphres_minimal
 @click.command()
 @click.option("--dataset", default="Duke", help="Dataset loader class (Mot16, Duke or VisDrone)")
 @click.option("--datadir", default="data", help="Directory into which the Duke dataset will be downloaded")
-@click.option("--limit", default=None, type=int, help="The number of graphs to use. Default is all of them.")
 @click.option("--threads", default=None, type=int, help="The number of threads to use. Default is one per CPU core.")
 @click.option("--segment-length", default=10, type=int, help="The length in seconds of video used for each garph")
 @click.option("--cachedir", default="cachedir", help="Directory into which intermediate results are cached between runs")
@@ -22,24 +21,22 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--fold", default=None, type=int)
 @click.option("--max-connect", default=5, type=int)
 @click.option("--no-train", is_flag=True)
-@click.option("--resume", is_flag=True)
 @click.option("--max-worse-eval-epochs", default=float('Inf'), type=float)
 @click.option("--epochs", default=10, type=int)
 @click.option("--too-short-track", default=2, type=int)
-def main(dataset, datadir, limit, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, resume, max_worse_eval_epochs, epochs, too_short_track):
+def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, max_worse_eval_epochs, epochs, too_short_track):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
         opts['fold'] = fold
     dataset = eval(dataset)(datadir, **opts)
-    dataset.download()
-    dataset.prepare()
 
     find_minimal_graph_diff.too_short_track = too_short_track
     find_minimal_graph_diff.long_track = too_short_track * 2
 
-    prep_training_graphs(dataset, cachedir, limit=limit, threads=threads, segment_length_s=segment_length,
+    prep_training_graphs(dataset, cachedir, limit_train_amount=1e-3, threads=threads, segment_length_s=segment_length,
                          worker_params=dict(max_connect=max_connect))
 
+    return
     model = NNModelGraphresPerConnection()
     prep_minimal_graph_diffs(dataset, model, threads=threads)
     prep_eval_graphs(dataset, model, threads=threads)

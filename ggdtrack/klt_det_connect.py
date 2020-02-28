@@ -239,6 +239,7 @@ def prep_training_graphs_worker(arg):
 
 
 def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None,
+                         limit_train_amount=None,
                          worker=prep_training_graphs_worker, worker_params=None):
     if worker_params is None:
         worker_params = {}
@@ -261,7 +262,15 @@ def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, s
 
     jobs.sort(key=lambda j: j[3])
     Random(42).shuffle(jobs)
-    if limit is not None:
+
+    if limit_train_amount is not None:
+        assert limit is None
+        train_jobs = [j for j in jobs if j[4] == 'train']
+        eval_jobs = [j for j in jobs if j[4] == 'eval']
+        train_jobs = train_jobs[:int(limit_train_amount * len(train_jobs))]
+        jobs = train_jobs + eval_jobs
+
+    elif limit is not None:
         jobs = [j for j in jobs if j[4] != 'test']
         jobs = jobs[:limit]
 

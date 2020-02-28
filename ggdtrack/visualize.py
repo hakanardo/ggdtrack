@@ -96,7 +96,7 @@ if __name__ == '__main__':
     from ggdtrack.klt_det_connect import video_detections
     from ggdtrack.utils import load_pickle
 
-    # show_gt(Duke("/home/hakan/src/duke").scene(1))
+    show_gt(Duke("/home/hakan/src/duke").scene(1))
     # show_detections(video_detections(Duke('/home/hakan/src/duke').scene(1), 124472, 1000, 0.3))
     # show_detections(video_detections(Duke('/home/hakan/src/duke', 'openpose').scene(1), 124472, 1000, 0.3))
 
@@ -116,6 +116,6 @@ if __name__ == '__main__':
     # show_detections(video_detections(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'), 1, 1000))
     # show_gt(Mot16("/home/hakan/src/ggdtrack/data").scene('train__MOT16-13'))
 
-    show_metrics_result(VisDrone('data').scene("val__uav0000305_00000_v"), load_pickle("cachedir/logdir_VisDrone/tracks/VisDrone_graph_val__uav0000305_00000_v_00000001.pck"))
+    # show_metrics_result(VisDrone('data').scene("val__uav0000305_00000_v"), load_pickle("cachedir/logdir_VisDrone/tracks/VisDrone_graph_val__uav0000305_00000_v_00000001.pck"))
     # show_metrics_result(VisDrone('data').scene("val__uav0000268_05773_v"), load_pickle("cachedir/logdir_VisDrone/tracks/VisDrone_graph_val__uav0000268_05773_v_00000001.pck"))
 
