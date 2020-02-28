@@ -10,7 +10,7 @@ import torch
 from ggdtrack.dataset import ground_truth_tracks, false_positive_tracks
 from ggdtrack.klt_det_connect import graph_names
 from ggdtrack.mmap_array import as_database, VarHMatrixList, ScalarList
-from ggdtrack.utils import parallel, save_json, save_torch, load_pickle, load_json, load_graph
+from ggdtrack.utils import parallel, save_json, save_torch, load_pickle, load_json, load_graph, save_pickle
 
 import numpy as np
 
@@ -364,9 +364,9 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None, skipped_g
             final_trainval[part].append(bfn)
 
     trainval_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_trainval.json" % (dataset.name, model.feature_name))
-    skipped_ggd_types_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_skipped_ggd_types.json" % (dataset.name, model.feature_name))
+    skipped_ggd_types_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_skipped_ggd_types.pck" % (dataset.name, model.feature_name))
     if os.path.exists(trainval_name) and os.path.exists(skipped_ggd_types_name):
-        current_trainval = load_json(trainval_name)
+        current_trainval = load_pickle(trainval_name)
         for part in trainval.keys():
             if set(current_trainval[part]) != set(final_trainval[part]):
                 break
@@ -383,7 +383,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None, skipped_g
     save_json(skipped_ggd_types, skipped_ggd_types_name)
     for part, base_bfn, bfns in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
         trainval[part].append(base_bfn)
-        save_json(trainval, trainval_name)
+        save_pickle(trainval, trainval_name)
         for bfn in bfns:
             graphdiff = torch.load(bfn)
             lst = diff_lists[part]
