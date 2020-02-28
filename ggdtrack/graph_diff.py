@@ -343,7 +343,7 @@ def prep_minimal_graph_diff_worker(arg):
         bfns = glob(base_bfn + "_*")
     return part, base_bfn, bfns
 
-def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
+def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None, skipped_ggd_types=()):
     trainval = {'train': [], 'eval': []}
     final_trainval = {n: [] for n in trainval.keys()}
     diff_lists = {}
@@ -385,7 +385,8 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None):
             graphdiff = torch.load(bfn)
             lst = diff_lists[part]
             for gd in graphdiff:
-                lst.append(gd)
+                if gd.name not in skipped_ggd_types:
+                    lst.append(gd)
 
 def split_track_on_missing_edge(gt_tracks):
     tracks = defaultdict(list)

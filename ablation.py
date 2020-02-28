@@ -20,11 +20,10 @@ from ggdtrack.train import train_graphres_minimal
 @click.option("--minimal-confidence", default=None, type=float, help="Minimal confidense of detection to consider")
 @click.option("--fold", default=None, type=int)
 @click.option("--max-connect", default=5, type=int)
-@click.option("--no-train", is_flag=True)
 @click.option("--max-worse-eval-epochs", default=float('Inf'), type=float)
 @click.option("--epochs", default=10, type=int)
 @click.option("--too-short-track", default=2, type=int)
-def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, no_train, max_worse_eval_epochs, epochs, too_short_track):
+def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence, fold, max_connect, max_worse_eval_epochs, epochs, too_short_track):
     opts = dict(cachedir=cachedir, default_min_conf=minimal_confidence)
     if fold is not None:
         opts['fold'] = fold
@@ -36,13 +35,12 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
     prep_training_graphs(dataset, cachedir, limit_train_amount=1e-3, threads=threads, segment_length_s=segment_length,
                          worker_params=dict(max_connect=max_connect))
 
-    return
+    global_skip = {"LongConnectionOrder", "LongFalsePositiveTrack"}
     model = NNModelGraphresPerConnection()
-    prep_minimal_graph_diffs(dataset, model, threads=threads)
+    prep_minimal_graph_diffs(dataset, model, threads=threads, skipped_ggd_types=global_skip)
     prep_eval_graphs(dataset, model, threads=threads)
 
-    if not no_train:
-        train_graphres_minimal(dataset, model, epochs=epochs, resume=resume, max_worse_eval_epochs=max_worse_eval_epochs)
+    train_graphres_minimal(dataset, model, epochs=epochs, max_worse_eval_epochs=max_worse_eval_epochs)
 
     prep_eval_tracks(dataset, model, 'eval', threads=1)
     res, res_int = eval_prepped_tracks(dataset, 'eval')
@@ -52,10 +50,6 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
     res, res_int = eval_prepped_tracks_joined(dataset, 'eval')
     open(os.path.join(dataset.logdir, "eval_results_joined.txt"), "w").write(res)
     open(os.path.join(dataset.logdir, "eval_results_joined_int.txt"), "w").write(res_int)
-
-    prep_eval_tracks(dataset, model, 'test', threads=1)
-    dataset.prepare_submition()
-
 
 if __name__ == '__main__':
     main()
