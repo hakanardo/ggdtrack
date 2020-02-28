@@ -364,13 +364,15 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None, skipped_g
             final_trainval[part].append(bfn)
 
     trainval_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_trainval.json" % (dataset.name, model.feature_name))
-    if os.path.exists(trainval_name):
+    skipped_ggd_types_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_skipped_ggd_types.json" % (dataset.name, model.feature_name))
+    if os.path.exists(trainval_name) and os.path.exists(skipped_ggd_types_name):
         current_trainval = load_json(trainval_name)
         for part in trainval.keys():
             if set(current_trainval[part]) != set(final_trainval[part]):
                 break
         else:
-            return
+            if load_json(skipped_ggd_types_name) == skipped_ggd_types:
+                return
 
     for part in trainval.keys():
         dn = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_%s_mmaps" % (dataset.name, model.feature_name, part))
@@ -378,6 +380,7 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None, skipped_g
             rmtree(dn)
         diff_lists[part] = GraphDiffList(dn, model)
 
+    save_json(skipped_ggd_types, skipped_ggd_types_name)
     for part, base_bfn, bfns in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
         trainval[part].append(base_bfn)
         save_json(trainval, trainval_name)
