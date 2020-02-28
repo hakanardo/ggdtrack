@@ -366,12 +366,12 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None, skipped_g
     trainval_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_trainval.json" % (dataset.name, model.feature_name))
     skipped_ggd_types_name = os.path.join(dataset.cachedir, "minimal_graph_diff", "%s_%s_skipped_ggd_types.pck" % (dataset.name, model.feature_name))
     if os.path.exists(trainval_name) and os.path.exists(skipped_ggd_types_name):
-        current_trainval = load_pickle(trainval_name)
+        current_trainval = load_json(trainval_name)
         for part in trainval.keys():
             if set(current_trainval[part]) != set(final_trainval[part]):
                 break
         else:
-            if load_json(skipped_ggd_types_name) == skipped_ggd_types:
+            if load_pickle(skipped_ggd_types_name) == skipped_ggd_types:
                 return
 
     for part in trainval.keys():
@@ -380,10 +380,10 @@ def prep_minimal_graph_diffs(dataset, model, threads=None, limit=None, skipped_g
             rmtree(dn)
         diff_lists[part] = GraphDiffList(dn, model)
 
-    save_json(skipped_ggd_types, skipped_ggd_types_name)
+    save_pickle(skipped_ggd_types, skipped_ggd_types_name)
     for part, base_bfn, bfns in parallel(prep_minimal_graph_diff_worker, jobs, threads, "Prepping minimal graph diffs"):
         trainval[part].append(base_bfn)
-        save_pickle(trainval, trainval_name)
+        save_json(trainval, trainval_name)
         for bfn in bfns:
             graphdiff = torch.load(bfn)
             lst = diff_lists[part]
