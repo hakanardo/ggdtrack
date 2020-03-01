@@ -83,11 +83,11 @@ class LongKltEdgeModelMean(nn.Module):
     def forward(self, all_x):
         klt_x, long_x = all_x
         if len(klt_x) == 0:
-            klt = torch.zeros(64).to(klt_x.device)
+            klt = torch.zeros(64, device=klt_x.device)
         else:
             klt = self.klt_model(klt_x).mean(0)
         if len(long_x) == 0:
-            long = torch.zeros(16).to(klt_x.device)
+            long = torch.zeros(16, device=klt_x.device)
         else:
             long = self.long_model(long_x).mean(0)
         n_klt = torch.tensor(float(len(klt_x)), device=klt_x.device)
@@ -144,7 +144,7 @@ class NNModelGraphresPerConnection(NNModel):
         edge_scores = idx_sum(edge_scores, batch.edge_idx, 1)
 
         if batch.detection_signs.nelement() == 0:
-            detection_scores = torch.zeros((len(batch.detection_idx) - 1, 1))
+            detection_scores = torch.zeros((len(batch.detection_idx) - 1, 1), device=batch.detection_idx.device)
         else:
             detection_scores = batch.detection_signs * self.detection_model(batch.detections)
             detection_scores = idx_sum(detection_scores, batch.detection_idx, 1)
@@ -155,7 +155,7 @@ class NNModelGraphresPerConnection(NNModel):
 
     def connection_batch_forward(self, batch):
         if len(batch.long_idx) == 1 and len(batch.klt_idx) == 1:
-            return torch.zeros((0, 1))
+            return torch.zeros((0, 1), device=batch.long_idx.device)
         klt_scores = self.edge_model.klt_model(batch.klt_data)
         klt_scores, klt_n = idx_mean(klt_scores, batch.klt_idx, 64)
 
@@ -301,7 +301,7 @@ class NNModelSimple(NNModel):
         edge_scores = self.connection_batch_forward(batch) * batch.edge_signs
         edge_scores = idx_sum(edge_scores, batch.edge_idx, 1)
         if batch.detection_signs.nelement() == 0:
-            detection_scores = torch.zeros((len(batch.detection_idx) - 1, 1))
+            detection_scores = torch.zeros((len(batch.detection_idx) - 1, 1), device=batch.detection_idx.device)
         else:
             detection_scores = batch.detection_signs * self.detection_model(batch.detections)
             detection_scores = idx_sum(detection_scores, batch.detection_idx, 1)
