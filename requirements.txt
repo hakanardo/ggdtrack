@@ -4,7 +4,6 @@ tensorboardX==1.5
 lap==0.4.0
 vi3o==0.7.4
 opencv-python==4.0.0.21
-h5py==2.7.0
 scipy==1.1.0
 pplp==0.1
 requests==2.12.4
@@ -12,3 +11,4 @@ lapsolver==1.0.2
 https://github.com/hakanardo/py-motmetrics/archive/d35f316e9c41ee163faf82c328335f37c4ad6775.zip
 click==6.6
 tqdm==4.26.0
+h5py==2.10.0
