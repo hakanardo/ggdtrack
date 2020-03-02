@@ -32,7 +32,7 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
     find_minimal_graph_diff.too_short_track = too_short_track
     find_minimal_graph_diff.long_track = too_short_track * 2
 
-    prep_training_graphs(dataset, cachedir, limit_train_amount=1e-2, threads=threads, segment_length_s=segment_length,
+    prep_training_graphs(dataset, cachedir, limit_train_amount=1, threads=threads, segment_length_s=segment_length,
                          worker_params=dict(max_connect=max_connect))
 
     global_skip = {"LongConnectionOrder", "LongFalsePositiveTrack"}
