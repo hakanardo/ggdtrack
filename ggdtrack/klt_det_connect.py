@@ -240,7 +240,7 @@ def prep_training_graphs_worker(arg):
 
 def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, segment_overlap_s=1, limit=None,
                          limit_train_amount=None,
-                         worker=prep_training_graphs_worker, worker_params=None):
+                         worker=prep_training_graphs_worker, worker_params=None, seed=42):
     if worker_params is None:
         worker_params = {}
     lsts = {n: [] for n in dataset.parts.keys()}
@@ -261,7 +261,7 @@ def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, s
                 f0 += myseg - segment_overlap
 
     jobs.sort(key=lambda j: j[3])
-    Random(42).shuffle(jobs)
+    Random(seed).shuffle(jobs)
 
     if limit_train_amount is not None:
         assert limit is None
@@ -273,6 +273,8 @@ def prep_training_graphs(dataset, cachedir, threads=None, segment_length_s=10, s
     elif limit is not None:
         jobs = [j for j in jobs if j[4] != 'test']
         jobs = jobs[:limit]
+
+    jobs.sort(key=lambda j: j[3])
 
     for part, entry in parallel(worker, jobs, threads, 'Preppping training graphs'):
         lsts[part].append(entry)

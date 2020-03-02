@@ -12,19 +12,26 @@ from ggdtrack.train import train_graphres_minimal
 
 @click.command()
 @click.option("--threads", default=None, type=int, help="The number of threads to use. Default is one per CPU core.")
-def main(threads):
+@click.option("--cachedir", default="cachedir", help="Directory into which intermediate results are cached between runs")
+@click.option("--train-amounts", default="0.001,0.01,0.1,1.0", help="Amount of data to use")
+@click.option("--itterations", default=10, type=int, help="Amount of data to use")
+@click.option("--logdir-prefix", default="", help="Prepended to logdir path")
+def main(threads, cachedir, train_amounts, itterations, logdir_prefix):
     max_extra = 3
     dataset = Duke("data")
-    logdir = dataset.logdir
+    logdir = logdir_prefix + '/' + dataset.logdir
 
-    prep_training_graphs(dataset, dataset.cachedir, threads=threads)
 
-    model = NNModelGraphresPerConnection()
-    prep_minimal_graph_diffs(dataset, model, threads=threads)
-    prep_eval_graphs(dataset, model, threads=threads)
+    global_skip = {"LongConnectionOrder", "LongFalsePositiveTrack"}
 
-    for train_amount in [0.0001, 0.001, 0.01, 0.1, 1.0]:
-        for itt in range(10):
+    for train_amount in map(float, train_amounts.split(',')):
+        for itt in range(int(itterations)):
+
+            prep_training_graphs(dataset, cachedir, limit_train_amount=train_amount, threads=threads, seed=itt)
+            model = NNModelGraphresPerConnection()
+            prep_minimal_graph_diffs(dataset, model, threads=threads, skipped_ggd_types=global_skip)
+            prep_eval_graphs(dataset, model, threads=threads)
+
             dataset.logdir = logdir +  "_%8.6f_%.2d" % (train_amount, itt)
             model = NNModelGraphresPerConnection()
             train_graphres_minimal(dataset, model, epochs=1000, max_worse_eval_epochs=max_extra, train_amount=train_amount)
