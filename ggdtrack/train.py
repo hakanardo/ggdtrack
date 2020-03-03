@@ -5,6 +5,7 @@ from random import shuffle, seed
 from shutil import rmtree
 import time
 import numpy as np
+import math
 
 import torch
 from tensorboardX import SummaryWriter
@@ -176,6 +177,10 @@ def train_graphres_minimal(dataset, model, device=default_torch_device, limit=No
 
         loss = total_loss / batches
         print('%3d Loss: %9.6f, Train Accuracy: %9.6f %%, Eval Accuracy: %9.6f %%' % (epoch, train_loss, 100 * train_acc, 100 * eval_acc))
+        if not math.isfinite(train_loss):
+            print("Diverged!")
+            break
+
         writer.add_scalar('Loss/Train', train_loss, epoch)
         writer.add_scalar('Loss/Eval', eval_loss, epoch)
         writer.add_scalar('Accuracy/Train', 100 * train_acc, epoch)
