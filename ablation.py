@@ -70,6 +70,9 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
                              worker_params=dict(max_connect=max_connect))
 
         dataset.logdir = logdir + "_skipped_" + skipped
+        if os.path.exists(dataset.logdir):
+            continue
+        print(dataset.logdir)
         model = NNModelGraphresPerConnection()
         prep_minimal_graph_diffs(dataset, model, threads=threads, skipped_ggd_types=global_skip.union([skipped]))
         prep_eval_graphs(dataset, model, threads=threads)

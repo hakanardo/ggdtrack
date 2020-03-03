@@ -27,7 +27,7 @@ def main(threads, cachedir, train_amounts, itterations, logdir_prefix):
     for train_amount in map(float, train_amounts.split(',')):
         for itt in range(int(itterations)):
 
-            prep_training_graphs(dataset, cachedir, limit_train_amount=train_amount, threads=threads, seed=itt)
+            prep_training_graphs(dataset, cachedir, limit_train_amount=train_amount, threads=threads, seed=hash(logdir)+itt)
             model = NNModelGraphresPerConnection()
             prep_minimal_graph_diffs(dataset, model, threads=threads, skipped_ggd_types=global_skip)
             prep_eval_graphs(dataset, model, threads=threads)
