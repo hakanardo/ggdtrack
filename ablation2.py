@@ -75,6 +75,7 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
     if fold is not None:
         opts['fold'] = fold
     dataset = eval(dataset)(datadir, **opts)
+    dataset.cachedir = cachedir
     logdir = logdir_prefix + '/' + dataset.logdir
 
     find_minimal_graph_diff.too_short_track = too_short_track

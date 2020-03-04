@@ -9,19 +9,25 @@ import matplotlib.pyplot as plt
 
 motas = defaultdict(list)
 times = defaultdict(list)
-for fn in glob("cachedir/logdir_?.*_??/eval_results_int.txt"):
-    amount = float(fn.split('_')[1])
+# for fn in glob("cachedir/logdir_?.*_??/eval_results_int.txt"):
+for fn in glob("/usr/share/cognimatics/nobackup/hakan/ggdtrack/**/eval_results_int.txt", recursive=True):
+    amount = float(fn.split('_')[2])
     snapshots = sorted(glob(os.path.dirname(fn) + "/snapshot_???.pyt"))
     ts0 = stat(snapshots[0]).st_mtime_ns / 1e9
     ts1 = stat(snapshots[-1]).st_mtime_ns / 1e9
     train_time = (ts1 - ts0) / (len(snapshots) - 1) * len(snapshots)
     res_int = open(fn).read()
-    mota = float(re.split(r'\s+', res_int.split('\n')[-1])[4].replace('%', ''))
+    mota = float(re.split(r'\s+', res_int.split('\n')[-1])[1].replace('%', ''))
     motas[amount].append(mota)
     times[amount].append(train_time)
 
+times[0.1] = [95*60]
+times[0.01] = [47*60]
+times[0.001] = [34*60]
+
 data = []
 for amount in sorted(motas.keys()):
+    print(amount, len(motas[amount]))
     mm = motas[amount]
     tt = times[amount]
     data.append((amount, np.mean(mm), np.std(mm), np.mean(tt),

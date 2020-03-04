@@ -19,6 +19,7 @@ from ggdtrack.train import train_graphres_minimal
 def main(threads, cachedir, train_amounts, itterations, logdir_prefix):
     max_extra = 3
     dataset = Duke("data")
+    dataset.cachedir = cachedir
     logdir = logdir_prefix + '/' + dataset.logdir
 
 

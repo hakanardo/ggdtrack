@@ -9,16 +9,21 @@ import matplotlib.pyplot as plt
 
 idf1s = defaultdict(list)
 times = defaultdict(list)
-for fn in glob("cachedir/logdir_?.*_??/eval_results_int.txt"):
-    amount = float(fn.split('_')[1])
+# for fn in glob("cachedir/logdir_?.*_??/eval_results_int.txt"):
+for fn in glob("/usr/share/cognimatics/nobackup/hakan/ggdtrack/**/eval_results_int.txt", recursive=True):
+    amount = float(fn.split('_')[2])
     snapshots = sorted(glob(os.path.dirname(fn) + "/snapshot_???.pyt"))
     ts0 = stat(snapshots[0]).st_mtime_ns / 1e9
     ts1 = stat(snapshots[-1]).st_mtime_ns / 1e9
     train_time = (ts1 - ts0) / (len(snapshots) - 1) * len(snapshots)
     res_int = open(fn).read()
-    idf1 = float(re.split(r'\s+', res_int.split('\n')[-1])[1].replace('%', ''))
+    idf1 = float(re.split(r'\s+', res_int.split('\n')[-1])[10].replace('%', ''))
     idf1s[amount].append(idf1)
     times[amount].append(train_time)
+
+times[0.1] = [95*60]
+times[0.01] = [47*60]
+times[0.001] = [34*60]
 
 data = []
 for amount in sorted(idf1s.keys()):
@@ -29,8 +34,6 @@ for amount in sorted(idf1s.keys()):
 data = np.array(data)
 print(data[:,3]/60)
 print(data[:,4])
-
-
 
 fig, ax1 = plt.subplots()
 color1 = "#cb5b5a"
