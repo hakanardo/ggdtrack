@@ -85,13 +85,14 @@ def main(dataset, datadir, threads, segment_length, cachedir, minimal_confidence
     for add in ggd_types_order:
         skipped_ggd_types.remove(add)
 
+        dataset.logdir = logdir + "_added_" + add
+        print(dataset.logdir)
+        if os.path.exists(dataset.logdir):
+            continue
+
         prep_training_graphs(dataset, cachedir, limit_train_amount=0.1, threads=threads, segment_length_s=segment_length,
                              worker_params=dict(max_connect=max_connect))
 
-        dataset.logdir = logdir + "_added_" + add
-        if os.path.exists(dataset.logdir):
-            continue
-        print(dataset.logdir)
         model = NNModelGraphresPerConnection()
         prep_minimal_graph_diffs(dataset, model, threads=threads, skipped_ggd_types=skipped_ggd_types)
         prep_eval_graphs(dataset, model, threads=threads)
