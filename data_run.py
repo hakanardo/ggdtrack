@@ -1,5 +1,6 @@
 import os
 from glob import glob
+from time import time
 
 import click
 
@@ -27,20 +28,25 @@ def main(threads, cachedir, train_amounts, itterations, logdir_prefix):
 
     for train_amount in map(float, train_amounts.split(',')):
         for itt in range(int(itterations)):
-
+            t0 = time()
             prep_training_graphs(dataset, cachedir, limit_train_amount=train_amount, threads=threads, seed=hash(logdir)+itt)
             model = NNModelGraphresPerConnection()
             prep_minimal_graph_diffs(dataset, model, threads=threads, skipped_ggd_types=global_skip)
             prep_eval_graphs(dataset, model, threads=threads)
 
+            t1 = time()
             dataset.logdir = logdir +  "_%8.6f_%.2d" % (train_amount, itt)
             train_graphres_minimal(dataset, model, epochs=1000, max_worse_eval_epochs=max_extra, train_amount=train_amount)
 
+            t2 = time()
             fn = sorted(glob("%s/snapshot_???.pyt" % dataset.logdir))[-max_extra-1]
             prep_eval_tracks(dataset, model, 'eval', threads=1, snapshot=fn)
             res, res_int = eval_prepped_tracks(dataset, 'eval')
             open(os.path.join(dataset.logdir, "eval_results.txt"), "w").write(res)
             open(os.path.join(dataset.logdir, "eval_results_int.txt"), "w").write(res_int)
+
+            t3 = time()
+            open(os.path.join(dataset.logdir, "timeing.txt"), "w").write(repr((t0, t1, t2, t3)))
 
     prep_eval_gt_tracks(dataset, NNModelGraphresPerConnection)
     res, res_int = eval_prepped_tracks(dataset, 'eval')

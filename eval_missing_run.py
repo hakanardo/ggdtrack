@@ -18,6 +18,8 @@ def main(threads, cachedir, logdir_glob):
 
     for logdir in glob(logdir_glob):
         dataset.logdir = logdir
+        if os.path.exists(os.path.join(dataset.logdir, "eval_results_int.txt")):
+            continue
         model = NNModelGraphresPerConnection()
         fn = sorted(glob("%s/snapshot_???.pyt" % dataset.logdir))[-max_extra-1]
         prep_eval_tracks(dataset, model, 'eval', threads=1, snapshot=fn)
