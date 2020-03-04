@@ -14,6 +14,7 @@ from ggdtrack.model import NNModelGraphresPerConnection
 def main(threads, cachedir, logdir_glob):
     max_extra = 3
     dataset = Duke("data")
+    dataset.cachedir = cachedir
 
     for logdir in glob(logdir_glob):
         dataset.logdir = logdir
