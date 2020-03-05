@@ -22,9 +22,10 @@ for fn in glob("/usr/share/cognimatics/nobackup/hakan/ggdtrack/**/eval_results_i
         motas[amount].append(mota)
         times[amount].append(train_time)
 
-times[0.1] = [95*60]
-times[0.01] = [47*60]
-times[0.001] = [34*60]
+times[1.0] = [40*600]
+times[0.1] = [(1583367780.7332652 - 1583368536.1608598) * -1]
+times[0.01] = [(1583362711.7700946 - 1583363254.6004267) * -1]
+times[0.001] = [(1583359820.3473332 - 1583359939.7329333) * -1]
 
 print(motas[0.001])
 
