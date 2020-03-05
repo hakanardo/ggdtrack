@@ -18,8 +18,9 @@ for fn in glob("/usr/share/cognimatics/nobackup/hakan/ggdtrack/**/eval_results_i
     train_time = (ts1 - ts0) / (len(snapshots) - 1) * len(snapshots)
     res_int = open(fn).read()
     idf1 = float(re.split(r'\s+', res_int.split('\n')[-1])[10].replace('%', ''))
-    idf1s[amount].append(idf1)
-    times[amount].append(train_time)
+    if np.isfinite(idf1):
+        idf1s[amount].append(idf1)
+        times[amount].append(train_time)
 
 times[0.1] = [95*60]
 times[0.01] = [47*60]
@@ -54,7 +55,12 @@ ax2.plot(data[:, 0], data[:, 6], '--', color=color2, label="90 % Quantile IDF1 S
 ax2.set_xlabel('Amount of training data used')
 ax2.set_ylabel('IDF1', color=color2)
 ax2.tick_params('y', colors=color2)
-ax2.legend(loc='center')
+ax2.legend(loc=(0.35,0.3))
+a = list(ax2.axis())
+a[2] = 0.0
+ax2.axis(a)
+
 
 fig.tight_layout()
-plt.show()
+# plt.show()
+plt.savefig("data_run_idf1.pdf")
