@@ -6,7 +6,7 @@ vi3o==0.7.4
 opencv-python==4.0.0.21
 scipy==1.1.0
 pplp==0.1
-requests==2.12.4
+requests==2.20.0
 lapsolver==1.0.2
 https://github.com/hakanardo/py-motmetrics/archive/316be837d4243c81b360c5960baca4d7021989f5.zip
 click==6.6
