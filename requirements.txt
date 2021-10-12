@@ -3,7 +3,7 @@ pytest==3.0.6
 tensorboardX==1.5
 lap==0.4.0
 vi3o==0.7.4
-opencv-python==4.0.0.21
+opencv-python==4.1.1.26
 scipy==1.1.0
 pplp==0.1
 requests==2.12.4
